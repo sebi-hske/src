@@ -1,0 +1,26 @@
+WLAN-Verbindung mit Roboter:
+    ssh ubuntu@10.42.0.1
+        passwort eingeben
+
+Node auf Roboter starten:
+    ros2 launch turtlebot3_bringup robot.launch.py
+
+Neues Terminal
+    In workspace navigieren und action server starten
+        cd ~/ros2_ws
+        colcon build (optional)
+        source install/setup.bash
+        ros2 run ro36_simple_mover_server Ro36SimpleMoverServer    
+
+Neues Terminal
+    source install/setup.bash
+        Goal zum bewegen senden:
+            ros2 action send_goal /go_to ro36_interfaces/action/GoTo "pose: x: 0.0 y: 0.0 theta: 0.0"
+
+Videostream: [GStreamer über pip installieren]
+    IP-Adressen abgleichen
+    Befehl aus start_videostream.sh in mit robbi verbundenem Terminal
+    Befehl aus recieve_videostream.sh in lokalem Terminal   
+        GStreamer öffnet sich
+
+sss
