@@ -22,5 +22,3 @@ Videostream: [GStreamer über pip installieren]
     Befehl aus start_videostream.sh in mit robbi verbundenem Terminal
     Befehl aus recieve_videostream.sh in lokalem Terminal   
         GStreamer öffnet sich
-
-sss
