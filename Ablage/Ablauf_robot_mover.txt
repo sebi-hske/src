@@ -15,7 +15,7 @@ Neues Terminal
 Neues Terminal
     source install/setup.bash
         Goal zum bewegen senden:
-            ros2 action send_goal /go_to ro36_interfaces/action/GoTo "pose: x: 0.0 y: 0.0 theta: 0.0"
+            ros2 action send_goal /go_to ro36_interfaces/action/GoTo "pose: {x: 0.0, y: 0.0, theta: 0.0}"
 
 Videostream: [GStreamer über pip installieren]
     IP-Adressen abgleichen
