@@ -71,6 +71,9 @@ def main():
     # Detect ArUco markers in the video frame
     (corners, ids, rejected) = cv2.aruco.detectMarkers(
       frame, this_aruco_dictionary, parameters=this_aruco_parameters)
+    
+    #Initialize a list to store marker centers
+    marker_centers = []
        
     # Check that at least one ArUco marker was detected
     if len(corners) > 0:
@@ -100,6 +103,7 @@ def main():
         # Calculate and draw the center of the ArUco marker
         center_x = int((top_left[0] + bottom_right[0]) / 2.0)
         center_y = int((top_left[1] + bottom_right[1]) / 2.0)
+        marker_centers.append((center_x, center_y))
         cv2.circle(frame, (center_x, center_y), 4, (0, 0, 255), -1)
          
         # Draw the ArUco marker ID on the video frame
@@ -108,7 +112,18 @@ def main():
           (top_left[0], top_left[1] - 15),
           cv2.FONT_HERSHEY_SIMPLEX,
           0.5, (0, 255, 0), 2)
+    # If more than one marker is detected, calculate the midpoint between the first two    
+    if len(marker_centers) >= 2:
+      # Calculate midpoint
+      midpoint_x =  int((marker_centers[0][0] + marker_centers[1][0]) / 2)
+      midpoint_y = int((marker_centers[0][1] + marker_centers[1][1]) / 2)
 
+      # Draw the midpoint on the frame
+      cv2.circle(frame, (midpoint_x, midpoint_y), 6, (255, 255, 0), -1) #(b, g, r)
+      cv2.putText(frame, "Midpoint", 
+                  (midpoint_x, midpoint_y -10),
+                  cv2.FONT_HERSHEY_SIMPLEX,
+                  0.5, (255, 255, 0), 2)
 
     # Display the resulting frame
     cv2.imshow('frame',frame)
