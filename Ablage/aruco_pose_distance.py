@@ -75,6 +75,15 @@ def main():
       # Flatten the ArUco IDs list
       ids = ids.flatten()
     
+    
+       
+
+
+
+
+
+
+
     #Draw the detected markers
     cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
