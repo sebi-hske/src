@@ -2,14 +2,14 @@ import cv2 as cv
 from cv2 import aruco
 import numpy as np
 
-#calib_data_path = r"C:\Users\Smi\Desktop\Aruco_1\MultiMatrix.npz"
+calib_data_path = r'/home/sebi/ros2_ws/src/Ablage/MultiMatrix.npz'
 
-#calib_data = np.load(calib_data_path)
-#print(calib_data.files)
-#cam_mat = calib_data["camMatrix"]
-#dist_coef = calib_data["distCoef"]
-#r_vectors = calib_data["rVector"]
-#t_vectors = calib_data["tVector"]
+calib_data = np.load(calib_data_path)
+print(calib_data.files)
+cam_mat = calib_data["camMatrix"]
+dist_coef = calib_data["distCoef"]
+r_vectors = calib_data["rVector"]
+t_vectors = calib_data["tVector"]
 
 
 MARKER_SIZE = 8  
@@ -18,7 +18,7 @@ marker_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 
 param_markers = aruco.DetectorParameters()
 
-cap = cv.VideoCapture(0) #give the server id shown in IP webcam App
+cap = cv.VideoCapture(0)
 
 while True:
     ret, frame = cap.read()
@@ -30,7 +30,7 @@ while True:
     )
     if marker_corners:
         rVec, tVec, _ = aruco.estimatePoseSingleMarkers(
-            marker_corners, MARKER_SIZE
+            marker_corners, MARKER_SIZE, cam_mat, dist_coef
         )
         total_markers = range(0, marker_IDs.size)
         for ids, corners, i in zip(marker_IDs, marker_corners, total_markers):
