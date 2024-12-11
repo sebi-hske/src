@@ -7,7 +7,8 @@ This program:
   - Detects ArUco markers using OpenCV and Python
 '''
   
-from __future__ import print_function # Python 2/3 compatibility
+from __future__ import print_function
+# Python 2/3 compatibility
 import cv2 # Import the OpenCV library
 import numpy as np # Import Numpy library
  
@@ -54,8 +55,11 @@ def main():
   this_aruco_dictionary = cv2.aruco.getPredefinedDictionary(ARUCO_DICT[desired_aruco_dictionary])
   this_aruco_parameters = cv2.aruco.DetectorParameters()
    
+  #gstreamer_str = "sudo gst-launch-1.0 udpsrc address=10.42.0.206 port=5600 ! application/x-rtp, encoding-name=H264 ! rtph264depay ! avdec_h264 ! appsink drop=1"
   # Start the video stream
-  cap = cv2.VideoCapture(0)
+  #cap = cv2.VideoCapture(gstreamer_str, cv2.CAP_GSTREAMER)
+  cap = cv2.VideoCapture("ssh://ubuntu@10.42.0.1/home/ubuntu/dev/video0")
+
    
   while(True):
   
