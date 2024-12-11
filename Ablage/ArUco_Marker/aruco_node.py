@@ -2,7 +2,6 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
 import cv2 as cv
-from array import array
 import numpy as np
 import os
 
@@ -14,7 +13,7 @@ class ArucoDistance(Node):
         self.publisher_marker_id = self.create_publisher(Float32, 'aruco_id', 10)
         self.publisher_marker_center = self.create_publisher(Float32, 'center_offset', 10)
         self.cap = cv.VideoCapture(0)
-        self.aruco_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50)
+        self.aruco_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_1000)
         self.aruco_params = cv.aruco.DetectorParameters()
         self.camera_matrix = None  # Placeholder for camera matrix
         self.distortion_coefficients = None  # Placeholder for distortion coefficients
@@ -111,18 +110,24 @@ class ArucoDistance(Node):
         msg_list = marker_id.tolist()
         
         for val in msg_list:
-            msg_id = Float32()
-            msg_id.data = float(val)
-            self.publisher_marker_id.publish(msg_id)
-            self.get_logger().info('Publishing Marker IDs: "%s"' % msg_id.data)
+            if val == 999.0:
+                print('Node terminated via ID: 999')
+                exit(0)
+            else:    
+                msg_id = Float32()
+                msg_id.data = float(val)
+                self.publisher_marker_id.publish(msg_id)
+                self.get_logger().info('Publishing Marker IDs: "%s"' % msg_id.data)
         
 
 def main(args=None):
     rclpy.init(args=args)
-    aruco_dist_pub = ArucoDistance()
-    rclpy.spin(aruco_dist_pub)
-    aruco_dist_pub.destroy_node()
-    rclpy.shutdown()
+    try:
+        aruco_dist_pub = ArucoDistance()
+        rclpy.spin(aruco_dist_pub)
+        aruco_dist_pub.destroy_node()
+    finally:
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
