@@ -11,8 +11,8 @@ class ArucoDistance(Node):
         super().__init__('aruco_dist_pub')
         self.publisher_distance_to_marker = self.create_publisher(Float32, 'aruco_distance', 10)
         self.publisher_marker_id = self.create_publisher(Float32, 'aruco_id', 10)
-        self.publisher_marker_center = self.create_publisher(Float32, 'center_offset', 10)
-        self.cap = cv.VideoCapture(0)
+        self.publisher_marker_center = self.create_publisher(Float32, 'center_offset', 10)  #eher alles zusammen publishen
+        self.cap = cv.VideoCapture(0)                                                       #verallgemeinern und nur position der marker senden
         self.aruco_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_1000)
         self.aruco_params = cv.aruco.DetectorParameters()
         self.camera_matrix = None  # Placeholder for camera matrix
@@ -20,6 +20,7 @@ class ArucoDistance(Node):
 
         timer_period = 0.2  # Publishes data every 0.2 seconds (5Hz)
         self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.marker_tuple = tuple(())
 
         # Load calibration data and set camera matrix and distortion coefficients
         self.load_calibration_data()
@@ -44,35 +45,37 @@ class ArucoDistance(Node):
         if distance_marker is not None:
             self.publish_distance_marker(distance_marker)
 
-        marker_id = self.ids
+        marker_id = self.marker_tuple[1]                #ids in list mit zugehöriger distanz speichern und publishen
         if marker_id is not None:
             self.publish_marker_id(marker_id)
 
     def calculate_distance_to_marker(self, frame):
         img_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        corners, self.ids, _ = cv.aruco.detectMarkers(img_gray, self.aruco_dict, parameters=self.aruco_params)
-        self.calculate_center_offset(corners, self.ids)
-        if corners is not None and len(corners) > 0:
+        corners, ids, _ = cv.aruco.detectMarkers(img_gray, self.aruco_dict, parameters=self.aruco_params)
+        self.marker_tuple = (corners, ids)
+        self.calculate_center_offset()
+        if self.marker_tuple[0] is not None and len(self.marker_tuple[0]) > 0:
             rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(
-                corners, 7, self.camera_matrix, self.distortion_coefficients
+                self.marker_tuple[0], 7, self.camera_matrix, self.distortion_coefficients
             )
             distance = np.sqrt(tvecs[0][0][2] ** 2 + tvecs[0][0][0] ** 2 + tvecs[0][0][1] ** 2)
             return distance/100
         else:
             return -1.0
         
-    def calculate_center_offset(self, corners, ids):
+    def calculate_center_offset(self):
         marker_centers = []
-        if len(corners) > 0:
+        if len(self.marker_tuple[0]) > 0:
           # Flatten the ArUco IDs list
           #ids = ids.flatten()
 
           # Loop over the detected ArUco corners
-          for (marker_corner, marker_id) in zip(corners, ids):
+          for (marker_corner, marker_id) in zip(self.marker_tuple[0], self.marker_tuple[1]):
 
             # Extract the marker corners
-            corners = marker_corner.reshape((4, 2))
-            (top_left, top_right, bottom_right, bottom_left) = corners
+            #marker_corner = self.marker_tuple[0]
+            marker_corner = marker_corner.reshape((4, 2))
+            (top_left, top_right, bottom_right, bottom_left) = marker_corner
 
             # Convert the (x,y) coordinate pairs to integers
             top_right = (int(top_right[0]), int(top_right[1]))
@@ -92,7 +95,7 @@ class ArucoDistance(Node):
           midpoint_y = int((marker_centers[0][1] + marker_centers[1][1]) / 2)    
           self.get_logger().info('Center between Markers at: '+ str(midpoint_x) + ' | ' + str(midpoint_y))        
 
-    def publish_center_offset(self, center_offset):
+    def publish_center_offset(self, center_offset):         #offset nicht in pixel ausgeben !!SI-Einheiten!!
         msg_offset = Float32()
         msg_offset.data = float(center_offset)
         self.publisher_marker_center.publish(center_offset)
@@ -111,7 +114,7 @@ class ArucoDistance(Node):
         
         for val in msg_list:
             if val == 999.0:
-                print('Node terminated via ID: 999')
+                print('Node terminated via ID: 999')    #999 als variable abfragen und in parameter file definieren welche aktion ausgeführt werden soll
                 exit(0)
             else:    
                 msg_id = Float32()
