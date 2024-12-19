@@ -7,7 +7,7 @@ import numpy as np
 import os
 
 MARKERSIZE = 70                 #immer beide werte beachten!!
-DISTANCE_COEFFICIANT = 10000    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
+DISTANCE_COEFFICIANT = 100    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
 CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/Ablage/ArUco_Marker/calibration.npz'
 ARUCO_DICT = cv.aruco.DICT_4X4_1000
 
