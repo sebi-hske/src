@@ -6,7 +6,6 @@ import cv2 as cv
 import numpy as np
 import os
 
-EXIT_VAL = 999
 MARKERSIZE = 70                 #immer beide werte beachten!!
 DISTANCE_COEFFICIANT = 10000    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
 CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/Ablage/ArUco_Marker/calibration.npz'
@@ -109,20 +108,7 @@ class ArucoDistance(Node):
         
         if center_x is not None:
             self.publish_center_offset(center_x)   
-
-
-
-    def soft_stop(self, val):
-        if val is not None:
-            if len(val) >= 1:
-                if val.any() == EXIT_VAL:
-                    self.get_logger().info('Node stopped with ID: ' + str(EXIT_VAL))
-                    exit(0)
-
-            if val == EXIT_VAL:
-                self.get_logger().info('Node stopped with ID: ' + str(EXIT_VAL))
-                exit(0)
-        
+      
 
     def publish_center_offset(self, center_offset):        
         msg_offset = Float32()
