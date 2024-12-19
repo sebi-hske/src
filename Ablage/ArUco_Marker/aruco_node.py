@@ -16,9 +16,7 @@ class ArucoDistance(Node):
 
     def __init__(self):
         super().__init__('aruco_dist_pub')
-        #self.publisher_distance_to_marker = self.create_publisher(Float32, 'aruco_distance', 10)
-        #self.publisher_marker_id = self.create_publisher(Float32, 'aruco_id', 10)
-        self.publisher_id_and_dst = self.create_publisher(String, 'id_dst', 10)
+        self.publisher_id_and_dst = self.create_publisher(String, 'id_dst', 10)             #bei beiden topics evtl pfade erstellen
         self.publisher_marker_center = self.create_publisher(Float32, 'center_offset', 10)  
 
         self.cap = cv.VideoCapture(0)                                                       
@@ -53,14 +51,11 @@ class ArucoDistance(Node):
         distance_marker = self.calculate_distance_to_marker(frame) #Publishs the Distance to the  Marker, if an aruco marker is detected
         #self.soft_stop(self.marker_tuple[1])
         dst_tuple = (distance_marker, )                       
-        #if distance_marker is not None:
-        #    self.publish_distance_marker(distance_marker)
-
+        
         self.marker_tuple += dst_tuple                  #workaround combination both tuples
 
         marker_id = self.marker_tuple[1]                
         if marker_id is not None:
-            #self.publish_marker_id(marker_id)
             self.publish_id_and_dst(self.marker_tuple)
 
         
@@ -87,11 +82,10 @@ class ArucoDistance(Node):
         if len(self.marker_tuple[1]) > 1:
             # Flatten the ArUco IDs list
             #ids = ids.flatten()
-            print('2 marker')
+            #print('2 marker')
             # Loop over the detected ArUco corners
             for (marker_corner, marker_id) in zip(self.marker_tuple[0], self.marker_tuple[1]):  
               # Extract the marker corners
-              #marker_corner = self.marker_tuple[0]
               marker_corner = marker_corner.reshape((4, 2))
               (top_left, top_right, bottom_right, bottom_left) = marker_corner  
               # Convert the (x,y) coordinate pairs to integers
@@ -142,27 +136,6 @@ class ArucoDistance(Node):
         msg_id_dst.data = str(id.item(0)) + ", " + str(dst)
         self.publisher_id_and_dst.publish(msg_id_dst)
         self.get_logger().info('publishing combined id and distance: "%s"' % msg_id_dst.data)
-
-    #def publish_distance_marker(self, distance_marker):
-    #    msg_marker = Float32()
-    #    msg_marker.data = float(distance_marker)
-    #    self.publisher_distance_to_marker.publish(msg_marker)
-    #    self.get_logger().info('Publishing distance to marker: "%s"' % msg_marker.data)
-        
-    #def publish_marker_id(self, marker_id):
-    #    marker_id = marker_id.flatten()
-    #    marker_id = np.asarray(marker_id, int)
-    #    msg_list = marker_id.tolist()
-    #    
-    #    for val in msg_list:
-    #        if val == 999.0:
-    #            print('Node terminated via ID: 999')    #999 als variable abfragen und in parameter file definieren welche aktion ausgeführt werden soll
-    #            exit(0)
-    #        else:    
-    #            msg_id = Float32()
-    #            msg_id.data = float(val)
-    #            self.publisher_marker_id.publish(msg_id)
-    #            self.get_logger().info('Publishing Marker IDs: "%s"' % msg_id.data)
         
 
 def main(args=None):
