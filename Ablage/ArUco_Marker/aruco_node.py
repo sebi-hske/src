@@ -114,14 +114,14 @@ class ArucoDistance(Node):
         msg_offset = Float32()
         msg_offset.data = float(center_offset)
         self.publisher_marker_center.publish(msg_offset)
-        self.get_logger().info('Publishing offset to center: "%s"' % msg_offset.data)
+        #self.get_logger().info('Publishing offset to center: "%s"' % msg_offset.data)
 
     def publish_id_and_dst(self, data_tuple):
         (_, id, dst) = data_tuple   #corners wird nicht verwendet            
         msg_id_dst = String()
         msg_id_dst.data = str(id.item(0)) + ", " + str(dst)
         self.publisher_id_and_dst.publish(msg_id_dst)
-        self.get_logger().info('publishing combined id and distance: "%s"' % msg_id_dst.data)
+        #self.get_logger().info('publishing combined id and distance: "%s"' % msg_id_dst.data)
         
 
 def main(args=None):
