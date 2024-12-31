@@ -6,7 +6,7 @@ import cv2 as cv
 import numpy as np
 import os
 
-MARKERSIZE = 70                 #immer beide werte beachten!!
+MARKERSIZE = 0.7                 #immer beide werte beachten!!
 DISTANCE_COEFFICIANT = 100    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
 CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/Ablage/ArUco_Marker/calibration.npz'
 ARUCO_DICT = cv.aruco.DICT_4X4_1000
@@ -63,7 +63,7 @@ class ArucoDistance(Node):
         corners, ids, _ = cv.aruco.detectMarkers(frame, self.aruco_dict, parameters=self.aruco_params)
         self.marker_tuple = (corners, ids)        
         if self.marker_tuple[0] is not None and len(self.marker_tuple[0]) > 0:
-            rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(
+            rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(                                       #opencv version auf roboter??
                 self.marker_tuple[0], MARKERSIZE, self.camera_matrix, self.distortion_coefficients
             )
             distance = np.sqrt(tvecs[0][0][2] ** 2 + tvecs[0][0][0] ** 2 + tvecs[0][0][1] ** 2)
@@ -76,8 +76,8 @@ class ArucoDistance(Node):
     def calculate_center_offset(self, frame, offset_single_marker):
         marker_centers = []
         image_width = frame.shape[1]
-        center_x = offset_single_marker + image_width
-        #print(frame.shape)
+        center_x = offset_single_marker + image_width       #meter mit pixel verrechnet
+        #print(frame.shape)                                 #offset ist breits meter angabe aus perspektive kamera
         if len(self.marker_tuple[1]) > 1:
             # Flatten the ArUco IDs list
             #ids = ids.flatten()
