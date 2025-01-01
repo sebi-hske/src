@@ -1,0 +1,7 @@
+#goal
+int32 mode
+---
+#result
+bool finished
+---
+#feedback

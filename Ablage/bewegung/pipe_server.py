@@ -7,6 +7,7 @@ import time
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 import threading
+from bewegung import Mode
 from bewegung.state_machine import ModeSelection
 from std_msgs.msg import String
 #implementierung action server?
