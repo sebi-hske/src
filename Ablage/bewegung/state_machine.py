@@ -1,4 +1,7 @@
 from enum import Enum
+from bewegung import drive_node
+from bewegung import turn_node
+from bewegung import follow_node
 
 
 class _State(Enum):
@@ -21,10 +24,10 @@ class ModeSelection:
         if self._state == _State.IDLING:
             return None
         elif self._state == _State.DRIVE:
-            return #aufrufen Node fahren
+            return drive_node()
         elif self._state == _State.TURN:
-            return #aufrufen Node drehen
+            return turn_node()
         elif self._state == _State.FOLLOW:
-            return #aufrufen Node folgen
+            return follow_node()
         else: 
             return None
