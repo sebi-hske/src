@@ -1,23 +1,18 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-from std_msgs.msg import Float32
 
 class ArucoListener(Node):
 
     def __init__(self):
         super().__init__('aruco_listener')
-        self.subscription_id = self.create_subscription(String, 'id_dst', self.listener_id, 10)
-        self.subscription_offset = self.create_subscription(Float32, 'center_offset', self.listener_offset, 10)
-
-        self.subscription_id
-        self.subscription_offset   #prevent unused variable warning
+        self.subscription_data = self.create_subscription(String, 'data', self.listener_data, 10)
+        self.subscription_data
     
-    def listener_id(self, msg):
-        self.get_logger().info('combined id and distance: "%s"' % msg.data)
-
-    def listener_offset(self, msg):
-        self.get_logger().info('offset from middle of screen: "%s"' % msg.data)
+    def listener_data(self, msg):
+        data = msg.data
+        data_tuple = tuple(map(float, data.split()))
+        print(data_tuple)
 
 def main(args=None):
     rclpy.init()
