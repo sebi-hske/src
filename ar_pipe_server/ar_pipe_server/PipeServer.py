@@ -106,13 +106,13 @@ class PipeServer(Node):
             self.get_logger().info('Driving goal was aborted')
         return result
     
-    def main():
-        print('Pipe Server active')
-        rclpy.init()
-        try:
-            pipe_server = PipeServer()
-            mt_executer = MultiThreadedExecutor()
-            rclpy.spin(pipe_server, executor=mt_executer)
-            pipe_server.destroy()
-        finally:
-            rclpy.shutdown()
+def main():
+    print('Pipe Server active')
+    rclpy.init()
+    try:
+        pipe_server = PipeServer()
+        mt_executer = MultiThreadedExecutor()
+        rclpy.spin(pipe_server, executor=mt_executer)
+        pipe_server.destroy()
+    finally:
+        rclpy.shutdown()
