@@ -51,11 +51,11 @@ class PipeServer(Node):
         return GoalResponse.ACCEPT
     
     def handle_accepted_callback(self, goal_handle):
-        with self._goal_lock:
-            if self._goal_handle is not None and self._goal_handle.is_active:
+        with self.goal_lock:
+            if self.goal_handle is not None and self.goal_handle.is_active:
                 self.get_logger().info('Replacing active goal with new goal.')
-                self._goal_handle.abort()
-            self._goal_handle = goal_handle
+                self.goal_handle.abort()
+            self.goal_handle = goal_handle
         goal_handle.execute()
     
     def cancel_callback(self, goal_handle):

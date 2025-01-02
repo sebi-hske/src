@@ -5,7 +5,7 @@ import cv2 as cv
 import numpy as np
 import os
 
-MARKERSIZE = 0.7                 #immer beide werte beachten!!
+MARKERSIZE = 0.07                 #immer beide werte beachten!!
 DISTANCE_COEFFICIANT = 100    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
 CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/ar_pipe_server/ar_pipe_server/calibration.npz'
 ARUCO_DICT = cv.aruco.DICT_4X4_1000
