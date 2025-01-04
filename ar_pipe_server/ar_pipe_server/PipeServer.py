@@ -86,11 +86,10 @@ class PipeServer(Node):
                 #print(distance)
 
                 mode = int(id)
-
-                self.mode_selection._state = mode
                 print(mode)
+                self.mode_selection.drive(self.data_tuple)
             
-                #hier aufrufen der state machine
+                
 
             finally:
                 time.sleep(0.1)

@@ -1,4 +1,5 @@
 from enum import Enum
+import time
 
 
 class _State(Enum):
@@ -29,11 +30,16 @@ class ModeSelection:
         else: 
             return None
         
-    def drive(self):
-        print("driving")
+    def drive(self, data_tuple):
+
+        print("driving with input: " + data_tuple)
+        time.sleep(2)
+        self._state = _State.TURN
 
     def turn(self):
         print("turning")
+        time.sleep(2)
+        self._state = _State.DRIVE
 
     def follow(self):
         print("following")
