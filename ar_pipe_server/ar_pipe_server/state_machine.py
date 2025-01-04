@@ -21,10 +21,19 @@ class ModeSelection:
         if self._state == _State.IDLING:
             return None
         elif self._state == _State.DRIVE:
-            return drive_node()
+            return self.drive()
         elif self._state == _State.TURN:
-            return turn_node()
+            return self.turn()
         elif self._state == _State.FOLLOW:
-            return follow_node()
+            return self.follow()
         else: 
             return None
+        
+    def drive(self):
+        print("driving")
+
+    def turn(self):
+        print("turning")
+
+    def follow(self):
+        print("following")

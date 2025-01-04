@@ -1,4 +1,6 @@
+import sys
 import rclpy
+import rclpy.executors
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from tf_transformations import euler_from_quaternion
@@ -10,7 +12,9 @@ import threading
 from ar_interface.action import Mode
 from ar_pipe_server.state_machine import ModeSelection
 from std_msgs.msg import String
+from ar_pipe_server.ArucoDistance import ArucoDistance
 #implementierung action server?
+
 
 class PipeServer(Node):
     def __init__(self):
@@ -33,6 +37,7 @@ class PipeServer(Node):
         self.callback_group = ReentrantCallbackGroup()
         self.goal_lock = threading.Lock()
         self.mode_selection = ModeSelection()
+        ArucoDistance()
             
 
     def listener_data(self, msg):
@@ -71,24 +76,26 @@ class PipeServer(Node):
         self.get_logger().info('starting to drive with velocity: ')
 
         while rclpy.ok():
+            try:
+                (id, offset, distance) = self.data_tuple
+            except:
+                print("no data from subscriber")       
+            else:
+                #print(int(id))
+                #print(offset)
+                #print(distance)
 
-            print(self.data_tuple)
+                mode = int(id)
+
+                self.mode_selection._state = mode
+                print(mode)
             
-            (id, offset, distance) = self.data_tuple
+                #hier aufrufen der state machine
 
-            print(int(id))
-            print(offset)
-            print(distance)
+            finally:
+                time.sleep(0.1)
 
-            mode = int(id)
-
-            self.mode_selection._state = mode
-            #hier aufrufen der state machine
-
-
-            time.sleep(0.1)
-
-        return self.determince_action_result(goal_handle)
+        return self.determine_action_result(goal_handle)
     
     def determine_action_result(self, goal_handle):
         result = Mode.Result()
@@ -112,7 +119,9 @@ def main():
     try:
         pipe_server = PipeServer()
         mt_executer = MultiThreadedExecutor()
+        #aruco_distance = ArucoDistance()
         rclpy.spin(pipe_server, executor=mt_executer)
         pipe_server.destroy()
+        
     finally:
         rclpy.shutdown()
