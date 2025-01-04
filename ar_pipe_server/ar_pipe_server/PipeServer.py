@@ -37,7 +37,7 @@ class PipeServer(Node):
         self.callback_group = ReentrantCallbackGroup()
         self.goal_lock = threading.Lock()
         self.mode_selection = ModeSelection()
-        ArucoDistance()
+        #ArucoDistance()
             
 
     def listener_data(self, msg):
@@ -74,7 +74,7 @@ class PipeServer(Node):
     
     def execute_callback(self, goal_handle):
         self.get_logger().info('starting to drive with velocity: ')
-
+        self.mode_selection.start_state()
         while rclpy.ok():
             try:
                 (id, offset, distance) = self.data_tuple
@@ -87,10 +87,9 @@ class PipeServer(Node):
 
                 mode = int(id)
                 print(mode)
-                self.mode_selection.drive(self.data_tuple)
-            
                 
-
+                self.mode_selection.select_mode(self.data_tuple)
+            
             finally:
                 time.sleep(0.1)
 
