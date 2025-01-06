@@ -1,5 +1,7 @@
 from enum import Enum
 import time
+from ar_pipe_server.drive import DriveNode
+
 
 
 class _State(Enum):
@@ -18,14 +20,14 @@ class ModeSelection:
     def cancel_target(self):
         self._state = _State.IDLING
 
-    def select_mode(self, data_tuple):
+    def select_mode(self, data_tuple, velocity):
         (id, _, _) = data_tuple
         id = int(id)
-        if id == 0:
+        if id == 2:
             self._state = _State.DRIVE
         if id == 1:
             self._state = _State.TURN
-        if id == 2:
+        if id == 0:
             self._state = _State.FOLLOW
         if id == 999:
             self._state = _State.IDLING
@@ -33,7 +35,7 @@ class ModeSelection:
         if self._state == _State.IDLING:
             return None
         elif self._state == _State.DRIVE:
-            return self.drive(data_tuple)
+            return self.drive(data_tuple, velocity)
         elif self._state == _State.TURN:
             return self.turn(data_tuple)
         elif self._state == _State.FOLLOW:
@@ -44,11 +46,10 @@ class ModeSelection:
     def start_state(self):
         self._state = _State.IDLING
         
-    def drive(self, data_tuple):
-        print("driving with input: " + str(data_tuple))
-        time.sleep(0.1)
+    def drive(self, data_tuple, velocity):
+        print("driving with speed: " + str(velocity))
         self._state = _State.IDLING        
-        return self.turn(data_tuple)
+        return DriveNode().drive(data_tuple, velocity)
 
     def turn(self, data_tuple):
         print("turning")

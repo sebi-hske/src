@@ -7,7 +7,8 @@ import os
 
 MARKERSIZE = 0.07                 #immer beide werte beachten!!
 DISTANCE_COEFFICIANT = 100    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
-CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/ar_pipe_server/ar_pipe_server/calibration.npz'
+CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/ar_pipe_server/ar_pipe_server/calibration.npz'     #lokale maschine
+#CALIBRATION_DATA_PATH = '/home/ubuntu/calibration.npz'      #robbi
 ARUCO_DICT = cv.aruco.DICT_4X4_1000
 
 class ArucoDistance(Node):

@@ -28,7 +28,7 @@ class PipeServer(Node):
         self.action_server = ActionServer(
             self,
             Mode,       #action server und goals hier ändern
-            'mode',
+            'velocity',
             execute_callback=self.execute_callback,
             goal_callback= self.goal_callback,
             handle_accepted_callback= self.handle_accepted_callback,
@@ -46,12 +46,13 @@ class PipeServer(Node):
         #print(self.data_tuple)
 
     def goal_callback(self, goal_request):
-        self.get_logger().info('Recieved goal to start driving with velocity: ')
+        goal_request.velocity = float("%.2f" % goal_request.velocity)
+        self.get_logger().info('Recieved goal to start driving with velocity: ' + str(goal_request.velocity))
 
-        PLACEHOLDER = None
-        if PLACEHOLDER is not None:
-            self.get_logger().info('Goal was rejected because of PLACEHOLDER')
-            return GoalResponse.REJECT
+        if goal_request.velocity > 0.2:
+            goal_request.velocity = 0.2
+            self.get_logger().info('Velocity too high, defauling to 0.2')
+        
 
         return GoalResponse.ACCEPT
     
@@ -73,13 +74,14 @@ class PipeServer(Node):
         return CancelResponse.ACCEPT
     
     def execute_callback(self, goal_handle):
-        self.get_logger().info('starting to drive with velocity: ')
+        self.get_logger().info('Starting to drive with velocity: ' + str(goal_handle.request.velocity))
         self.mode_selection.start_state()
         while rclpy.ok():
             try:
                 (id, offset, distance) = self.data_tuple
             except:
-                print("no data from subscriber")       
+                time.sleep(0)
+                #print("no data from subscriber")       
             else:
                 #print(int(id))
                 #print(offset)
@@ -88,7 +90,8 @@ class PipeServer(Node):
                 mode = int(id)
                 print(mode)
                 
-                self.mode_selection.select_mode(self.data_tuple)
+                self.cmd_move = self.mode_selection.select_mode(self.data_tuple, goal_handle.request.velocity)
+                self.cmd_pub.publish(self.cmd_move)
             
             finally:
                 time.sleep(0.1)
