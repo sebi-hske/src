@@ -4,10 +4,10 @@ from nav_msgs.msg import Odometry
 from tf_transformations import euler_from_quaternion
 
 
-class ArucoListener(Node):
+class OdomListener(Node):
 
     def __init__(self):
-        super().__init__('aruco_listener')
+        super().__init__('odom_listener')
         self.subscription_data = self.create_subscription(Odometry, 'odom', self.listener_data, 10)
         self.subscription_data      #verhindert "unused variable" error
     
@@ -29,10 +29,10 @@ class ArucoListener(Node):
 
 def main(args=None):
     rclpy.init()
-    aruco_listener = ArucoListener()
-    rclpy.spin(aruco_listener)   
+    odom_listener = OdomListener()
+    rclpy.spin(odom_listener)   
 
-    aruco_listener.destroy_node()
+    odom_listener.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

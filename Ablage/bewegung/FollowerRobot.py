@@ -3,6 +3,9 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
 
+TURNING_RATE = 3.0      #Regelungsfaktor
+MID_GOAL = 0.35  
+
 class FollowerRobot(Node):
     def __init__(self):
         super().__init__('follower_robot')
@@ -23,7 +26,7 @@ class FollowerRobot(Node):
         self.linear_velocity = 0.2 #Maximale Vorwärtsgeschwindigkeit 
         self.kp_distance = 0.5 #Proportionalitätskonstante für Distanz
         self.kp_offset = 0.5 #Proportionalitätskonstante für Offset
-        self.desired_distance = 0.5 #Soll-Abstand
+        self.desired_distance = 1.5 #Soll-Abstand
         self.distance_thresholg = 0.1 #Tolleranz für den Sollabstand
 
     def offset_callback(self, msg):
@@ -41,14 +44,18 @@ class FollowerRobot(Node):
             marker_id, offset, distance = self.offset_tuple
 
             #Abstandskontrolle (linear.x)
-            distance_error = distance - self.desired_distance
+            distance_error = self.desired_distance - distance
             if abs(distance_error) < self.distance_thresholg:
                 linear_velocity = 0.0 #Halteposition
             else:
                 linear_velocity = -self.kp_distance * distance_error #Anpassung der Geschwindigkeit
 
             #Offsetkontrolle (angular.z)
-            angular_velocity = -self.kp_offset * offset
+            offset = offset * -1.0
+            rel_offset = offset / distance
+            #print(str(rel_offset)            
+            angular_velocity = MID_GOAL - rel_offset
+            angular_velocity = angular_velocity * -TURNING_RATE
 
             #Begrenzung der Geschwindigkeit
             linear_velocity = max(min(self.linear_velocity, linear_velocity), -self.linear_velocity)
