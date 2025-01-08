@@ -24,10 +24,12 @@ class FollowerRobot(Node):
         #Initialisiere Variablen
         self.offset_tuple = None #Tuple (Marker-ID, Offset, Distanz)
         self.linear_velocity = 0.2 #Maximale Vorwärtsgeschwindigkeit 
-        self.kp_distance = 0.5 #Proportionalitätskonstante für Distanz
+        self.kp_distance = 0.1 #Proportionalitätskonstante für Distanz
         self.kp_offset = 0.5 #Proportionalitätskonstante für Offset
-        self.desired_distance = 1.5 #Soll-Abstand
-        self.distance_thresholg = 0.1 #Tolleranz für den Sollabstand
+        self.desired_distance = 2.5 #Soll-Abstand
+        self.distance_thresholg = 0.2 #Tolleranz für den Sollabstand
+        timer_period = 0.005
+        self.timer = self.create_timer(timer_period, self.timer_callback) 
 
     def offset_callback(self, msg):
         try:
@@ -37,6 +39,9 @@ class FollowerRobot(Node):
             self.get_logger().info(f"Empfangenes Tuple: {self.offset_tuple}")
         except Exception as e:
             self.get_logger().error(f"Fehler bei der Verarbeitung der Daten: {e}")
+
+    def timer_callback(self):
+        self.follow_target()
 
     def follow_target(self):
         if self.offset_tuple is not None:
@@ -53,7 +58,6 @@ class FollowerRobot(Node):
             #Offsetkontrolle (angular.z)
             offset = offset * -1.0
             rel_offset = offset / distance
-            #print(str(rel_offset)            
             angular_velocity = MID_GOAL - rel_offset
             angular_velocity = angular_velocity * -TURNING_RATE
 
@@ -81,19 +85,15 @@ class FollowerRobot(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = FollowerRobot()
     try:
         #Kontrollschleife starten
-        while rclpy.ok():
-            rclpy.spin_once(node)
-            node.follow_target()
 
+        node = FollowerRobot()
+        rclpy.spin(node)
+        node.destroy_node()
     except KeyboardInterrupt:
         node.get_logger().info("Folgen beendet (Tastaturunterbrechung).")
-
     finally:
-        node.stop_robot()
-        node.destroy_node()
         rclpy.shutdown()
 
 if __name__ == '__main__':
