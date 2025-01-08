@@ -90,7 +90,7 @@ class PipeServer(Node):
     def execute_callback(self, goal_handle):
         self.get_logger().info('Starting to drive with velocity: ' + str(goal_handle.request.velocity))
         self.mode_selection.set_idling()
-        while rclpy.ok():
+        while True:
             try:
                 recieved, msg = wait_for_message(Odometry, PipeServer(), 'odom', qos_profile=1)
                 if recieved is False:
@@ -104,12 +104,13 @@ class PipeServer(Node):
                 ])
                 print("msg recieved")
             except:
-                print("no single message recieved")
+                time.sleep()
+                #print("no single message recieved")
             else:
                 self.mode_selection.set_target(theta)
                 break
 
-
+        
         while rclpy.ok():
             try:
                 (id, offset, distance) = self.data_tuple
@@ -121,17 +122,38 @@ class PipeServer(Node):
                 #print(offset)
                 #print(distance)
 
+                
                 mode = int(id)
+                if mode in range(3,999,1):
+                    mode = 0
+                    print("mode reset")
                 print(mode)
-
-                cmd_move = self.mode_selection.select_mode(self.data_tuple, goal_handle.request.velocity, self.current_angle)
-                if cmd_move.angular.z == 0.0:
-                    print("success")
-                    break
-                self.cmd_pub.publish(cmd_move)
+                
+                try:
+                    if mode == 1:
+                        self.mode_selection.set_turn()
+                    elif mode == 2:
+                        self.mode_selection.set_drive()
+                    elif mode == 0:
+                        self.mode_selection.set_idling()
+                    cmd_move, success = self.mode_selection.select_mode(self.data_tuple, goal_handle.request.velocity, self.current_angle)
+                except:
+                    print("shit's gonked choom")
+                    self.cmd_move.linear.x = 0.0
+                    self.cmd_move.angular.z = 0.0
+                    self.cmd_pub.publish(self.cmd_move)
+                else:
+                    if success:
+                        print("success")
+                        self.mode_selection.set_idling()
+                        cmd_move.linear.x = 0.0
+                        cmd_move.angular.z = 0.0
+                        self.cmd_pub.publish(cmd_move)
+                        break
+                    self.cmd_pub.publish(cmd_move)
             
             finally:
-                self.mode_selection.set_idling()
+                
                 time.sleep(0.05)
 
         return self.determine_action_result(goal_handle)

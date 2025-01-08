@@ -3,8 +3,8 @@ from tf_transformations import euler_from_quaternion
 import math
 import time
 
-ANGLE_THRESHOLD = 0.02
-ANGULAR_VELOCITY = 0.4
+ANGLE_THRESHOLD = 0.04
+ANGULAR_VELOCITY = 0.4 
 
 class TurningNode:
     
@@ -12,37 +12,46 @@ class TurningNode:
         print("orientation set " + str(theta))        
         #Setze den Zielwinkel für die Drehung (180° Wende)
         #target_angle = self.normalize_angle(theta + math.pi)
-        target_angle = theta + math.pi
+        if theta < 0:
+            target_angle = theta + math.pi
+        else:
+            target_angle = theta - math.pi
         return target_angle
         
 
     def perform_turning(self, target_angle, current_angle):        
-        print("executing")        
+        print("perform turn")        
         cmd = Twist()
         cmd.linear.x = 0.0 #Keine Vorwärtsbewegung während des Wendens
-        #Berechne die Abweichung zum Zielwinkel        
-        angular_error = target_angle - current_angle
-        print("abwichung " + str(angular_error))
+        #Berechne die Abweichung zum Zielwinkel
+        if target_angle < 0:    
+            angular_error = target_angle + current_angle
+        else:
+            angular_error = target_angle - current_angle
         #Prüfen, ob die Drehung abgeschlossen ist
-        if abs(angular_error) <= ANGLE_THRESHOLD:
+        if angular_error < 0:
+            angular_error = angular_error * -1.0
+        print("abweichung " + str(angular_error))
+        if angular_error < ANGLE_THRESHOLD:
             print("zielwinkel erreicht")
-            cmd.angular.z = 0.0
-            return cmd
+            return cmd, True
         else: 
-            angular_error = self.normalize_angle(angular_error)
-            if angular_error > 0:
-                cmd.angular.z = ANGULAR_VELOCITY
-                return cmd
-            else: 
-                cmd.angular.z = -ANGULAR_VELOCITY
-                return cmd
+            cmd.angular.z = ANGULAR_VELOCITY
+            return cmd, False
+            ##angular_error = self.normalize_angle(angular_error)
+            #if angular_error > 0:
+            #    cmd.angular.z = ANGULAR_VELOCITY
+            #    return cmd
+            #else: 
+            #    cmd.angular.z = -ANGULAR_VELOCITY
+            #    return cmd
 
     def stop_robot(self):
         #Stoppt den Roboter
         cmd = Twist()
         cmd.linear.x = 0.0
         cmd.angular.z = 0.0
-        return cmd
+        return cmd, False
 
     def normalize_angle(self, angle):
         #Normalisiert einen Winkel in den Bereich [-pi, pi]

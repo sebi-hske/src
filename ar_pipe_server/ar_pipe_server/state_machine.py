@@ -22,19 +22,7 @@ class ModeSelection:
     def cancel_target(self):
         self._state = _State.IDLING
 
-    def select_mode(self, data_tuple, velocity, current_angle):
-        (id, _, _) = data_tuple
-        id = int(id)
-        if id == 2:
-            self._state = _State.DRIVE
-        elif id == 1:
-            self._state = _State.TURN
-        elif id == 0:
-            self._state = _State.FOLLOW
-        elif id == 999:
-            self._state = _State.IDLING
-
-            
+    def select_mode(self, data_tuple, velocity, current_angle):            
         
         if self._state == _State.IDLING:
             cmd = Twist()
@@ -52,10 +40,17 @@ class ModeSelection:
         
     def set_idling(self):
         self._state = _State.IDLING
+
+    def set_drive(self):
+        self._state = _State.DRIVE
+
+    def set_turn(self):
+        self._state = _State.TURN
     
     def set_target(self, theta):
         print("setting target")
         self.target_angle = TurningNode().set_target_angle(theta)
+        print("target set " + str(self.target_angle))
         
     def drive(self, data_tuple, velocity):
         print("driving with speed: " + str(velocity))
