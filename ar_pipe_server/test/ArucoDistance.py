@@ -23,7 +23,7 @@ class ArucoDistance(Node):
         self.camera_matrix = None  # Placeholder for camera matrix
         self.distortion_coefficients = None  # Placeholder for distortion coefficients
 
-        timer_period = 0.2  # Publishes data every 0.2 seconds (5Hz)
+        timer_period = 0.1  # Publishes data every 0.2 seconds (5Hz)
         self.timer = self.create_timer(timer_period, self.timer_callback)       #start loop  
 
         # Load calibration data and set camera matrix and distortion coefficients

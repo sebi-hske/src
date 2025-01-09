@@ -23,13 +23,13 @@ class FollowerRobot(Node):
 
         #Initialisiere Variablen
         self.offset_tuple = None #Tuple (Marker-ID, Offset, Distanz)
-        self.linear_velocity = 0.2 #Maximale Vorwärtsgeschwindigkeit 
+        self.linear_velocity = 0.5 #Maximale Vorwärtsgeschwindigkeit 
         self.kp_distance = 0.1 #Proportionalitätskonstante für Distanz
         self.kp_offset = 0.5 #Proportionalitätskonstante für Offset
-        self.desired_distance = 2.5 #Soll-Abstand
-        self.distance_thresholg = 0.2 #Tolleranz für den Sollabstand
-        timer_period = 0.005
-        self.timer = self.create_timer(timer_period, self.timer_callback) 
+        self.desired_distance = 2.0 #Soll-Abstand
+        self.distance_threshold = 0.2 #Tolleranz für den Sollabstand
+        #timer_period = 0.0001
+        #self.timer = self.create_timer(timer_period, self.timer_callback) 
 
     def offset_callback(self, msg):
         try:
@@ -37,20 +37,23 @@ class FollowerRobot(Node):
             data_tuple = tuple(map(float, msg.data.split()))
             self.offset_tuple = data_tuple
             self.get_logger().info(f"Empfangenes Tuple: {self.offset_tuple}")
+            self.follow_target()
         except Exception as e:
             self.get_logger().error(f"Fehler bei der Verarbeitung der Daten: {e}")
 
-    def timer_callback(self):
-        self.follow_target()
+    #def timer_callback(self):
+        
 
     def follow_target(self):
         if self.offset_tuple is not None:
             #Tupel extrahieren: (Marker-ID, Offset, Distanz)
             marker_id, offset, distance = self.offset_tuple
+           
+
 
             #Abstandskontrolle (linear.x)
             distance_error = self.desired_distance - distance
-            if abs(distance_error) < self.distance_thresholg:
+            if abs(distance_error) < self.distance_threshold:
                 linear_velocity = 0.0 #Halteposition
             else:
                 linear_velocity = -self.kp_distance * distance_error #Anpassung der Geschwindigkeit

@@ -94,7 +94,7 @@ class PipeServer(Node):
             try:
                 recieved, msg = wait_for_message(Odometry, PipeServer(), 'odom', qos_profile=1)
                 if recieved is False:
-                    print("hyelp")
+                    print("msg false")
                 orientation = msg.pose.pose.orientation
                 _, _, theta = euler_from_quaternion([
                 orientation.x,
@@ -104,7 +104,7 @@ class PipeServer(Node):
                 ])
                 print("msg recieved")
             except:
-                time.sleep()
+                time.sleep(0)
                 #print("no single message recieved")
             else:
                 self.mode_selection.set_target(theta)
@@ -138,7 +138,7 @@ class PipeServer(Node):
                         self.mode_selection.set_idling()
                     cmd_move, success = self.mode_selection.select_mode(self.data_tuple, goal_handle.request.velocity, self.current_angle)
                 except:
-                    print("shit's gonked choom")
+                    print("no movement cmd")
                     self.cmd_move.linear.x = 0.0
                     self.cmd_move.angular.z = 0.0
                     self.cmd_pub.publish(self.cmd_move)
@@ -148,6 +148,7 @@ class PipeServer(Node):
                         self.mode_selection.set_idling()
                         cmd_move.linear.x = 0.0
                         cmd_move.angular.z = 0.0
+                        mode = 0
                         self.cmd_pub.publish(cmd_move)
                         break
                     self.cmd_pub.publish(cmd_move)

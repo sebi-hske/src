@@ -3,6 +3,7 @@ from geometry_msgs.msg import Twist
 
 TURNING_RATE = 3.0      #Regelungsfaktor
 MID_GOAL = 0.35         #Wert auf den geregelt wird
+DISTANCE = 2.0
 
 
 class DriveNode:
@@ -19,7 +20,7 @@ class DriveNode:
             angular_velocity = MID_GOAL - rel_offset
             angular_velocity = angular_velocity * -TURNING_RATE
 
-            if distance < 3.0:
+            if distance < DISTANCE:
                 return self.stop_robot()
             
             
