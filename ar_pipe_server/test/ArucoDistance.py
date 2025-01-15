@@ -9,7 +9,7 @@ MARKERSIZE = 0.07                 #immer beide werte beachten!!
 DISTANCE_COEFFICIANT = 100    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
 CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/ar_pipe_server/ar_pipe_server/calibration.npz'     #lokale maschine
 #CALIBRATION_DATA_PATH = '/home/ubuntu/calibration.npz'      #robbi
-ARUCO_DICT = cv.aruco.DICT_4X4_1000
+ARUCO_DICT = cv.aruco.DICT_4X4_50
 
 class ArucoDistance(Node):
 
@@ -23,7 +23,7 @@ class ArucoDistance(Node):
         self.camera_matrix = None  # Placeholder for camera matrix
         self.distortion_coefficients = None  # Placeholder for distortion coefficients
 
-        timer_period = 0.1  # Publishes data every 0.2 seconds (5Hz)
+        timer_period = 0.02  # Publishes data every 0.2 seconds (50Hz)
         self.timer = self.create_timer(timer_period, self.timer_callback)       #start loop  
 
         # Load calibration data and set camera matrix and distortion coefficients

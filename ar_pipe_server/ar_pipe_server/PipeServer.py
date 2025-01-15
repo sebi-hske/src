@@ -124,7 +124,7 @@ class PipeServer(Node):
 
                 
                 mode = int(id)
-                if mode in range(3,999,1):
+                if mode in range(4,999,1):
                     mode = 0
                     print("mode reset")
                 print(mode)
@@ -134,6 +134,8 @@ class PipeServer(Node):
                         self.mode_selection.set_turn()
                     elif mode == 2:
                         self.mode_selection.set_drive()
+                    elif mode == 3:
+                        self.mode_selection.set_follow()
                     elif mode == 0:
                         self.mode_selection.set_idling()
                     cmd_move, success = self.mode_selection.select_mode(self.data_tuple, goal_handle.request.velocity, self.current_angle)
@@ -155,7 +157,7 @@ class PipeServer(Node):
             
             finally:
                 
-                time.sleep(0.05)
+                time.sleep(0.02)
 
         return self.determine_action_result(goal_handle)
     

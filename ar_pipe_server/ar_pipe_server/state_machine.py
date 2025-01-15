@@ -3,6 +3,7 @@ from enum import Enum
 import time
 from ar_pipe_server.drive import DriveNode
 from ar_pipe_server.turn import TurningNode
+from ar_pipe_server.follow import FollowerNode
 
 
 class _State(Enum):
@@ -46,6 +47,9 @@ class ModeSelection:
 
     def set_turn(self):
         self._state = _State.TURN
+
+    def set_follow(self):
+        self._state = _State.FOLLOW    
     
     def set_target(self, theta):
         print("setting target")
@@ -65,6 +69,5 @@ class ModeSelection:
 
     def follow(self, data_tuple):
         print("following")
-        time.sleep(0.5)
         #self._state = _State.IDLING
-        return None
+        return FollowerNode().follow_target(data_tuple)
