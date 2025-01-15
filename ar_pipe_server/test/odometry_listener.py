@@ -24,9 +24,6 @@ class OdomListener(Node):
         print(self.current_angle)
 
 
-
-
-
 def main(args=None):
     rclpy.init()
     odom_listener = OdomListener()

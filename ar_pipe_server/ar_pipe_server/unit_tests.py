@@ -28,8 +28,8 @@ def test_drive_dst_reached():
 #Turning Node sets target angle with Input + pi
 def test_turn_set_target():
     turn = TurningNode()
-    print("Expected -2.41...: " + str(turn.set_target_angle(1.0)))
-    print("Expected 2.41...: " + str(turn.set_target_angle(-1.0)))
+    print("Expected -2.14...: " + str(turn.set_target_angle(1.0)))
+    print("Expected 2.14...: " + str(turn.set_target_angle(-1.0)))
 
 #Turning Node angular error is set to 0, returns True for goal reached
 def test_turn_perform_turn_angle_reached():
