@@ -34,10 +34,11 @@ class TurningNode:
         print("abweichung " + str(angular_error))
         if angular_error < ANGLE_THRESHOLD:
             print("zielwinkel erreicht")
-            return cmd, True
+            cmd.angular.z = 0.0
+            return cmd, True, 2
         else: 
             cmd.angular.z = ANGULAR_VELOCITY
-            return cmd, False
+            return cmd, False, 1
             ##angular_error = self.normalize_angle(angular_error)
             #if angular_error > 0:
             #    cmd.angular.z = ANGULAR_VELOCITY
@@ -51,7 +52,7 @@ class TurningNode:
         cmd = Twist()
         cmd.linear.x = 0.0
         cmd.angular.z = 0.0
-        return cmd, False
+        return cmd, False, 0
 
     def normalize_angle(self, angle):
         #Normalisiert einen Winkel in den Bereich [-pi, pi]

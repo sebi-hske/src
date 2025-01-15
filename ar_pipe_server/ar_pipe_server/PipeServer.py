@@ -15,6 +15,7 @@ import threading
 from ar_interface.action import Mode
 from ar_pipe_server.state_machine import ModeSelection
 from std_msgs.msg import String
+from rclpy.action import ActionClient
 #implementierung action server?
 
 
@@ -38,10 +39,22 @@ class PipeServer(Node):
             handle_accepted_callback= self.handle_accepted_callback,
             cancel_callback= self.cancel_callback)
         
+        self.action_client = ActionClient(self, Mode, 'velocity')
+        
         self.callback_group = ReentrantCallbackGroup()
         self.goal_lock = threading.Lock()
         self.mode_selection = ModeSelection()
         #ArucoDistance()
+
+    def send_goal(self, velocity, mode):
+        goal_msg = Mode.Goal()
+        goal_msg.velocity = velocity
+        goal_msg.mode = mode
+
+        self.action_client.wait_for_server()
+
+        self.action_client.send_goal(goal_msg)
+
             
 
     def listener_data(self, msg):
@@ -89,6 +102,7 @@ class PipeServer(Node):
     
     def execute_callback(self, goal_handle):
         self.get_logger().info('Starting to drive with velocity: ' + str(goal_handle.request.velocity))
+        speed = goal_handle.request.velocity
         self.mode_selection.set_idling()
         while True:
             try:
@@ -123,26 +137,33 @@ class PipeServer(Node):
                 #print(distance)
 
                 
-                mode = int(id)
-                if mode in range(4,999,1):
-                    mode = 0
-                    print("mode reset")
+                mode = goal_handle.request.mode
                 print(mode)
+                id = int(id)
                 
                 try:
                     if mode == 1:
                         self.mode_selection.set_turn()
                     elif mode == 2:
                         self.mode_selection.set_drive()
-                    elif mode == 3:
-                        self.mode_selection.set_follow()
+                    
                     elif mode == 0:
                         self.mode_selection.set_idling()
-                    cmd_move, success = self.mode_selection.select_mode(self.data_tuple, goal_handle.request.velocity, self.current_angle)
+
+                    if id == 4:
+                        self.mode_selection.set_idling()
+                        self.get_logger().warn('FRONT OF ROBOT DETECTED! REMOVE OBSTACLE!')
+                    elif id == 3:
+                        self.mode_selection.set_follow()
+                    elif id == 0:
+                        self.mode_selection.set_idling()
+
+                    cmd_move, success, result_mode = self.mode_selection.select_mode(self.data_tuple, speed, self.current_angle)
                 except:
                     print("no movement cmd")
                     self.cmd_move.linear.x = 0.0
                     self.cmd_move.angular.z = 0.0
+                    mode = 0
                     self.cmd_pub.publish(self.cmd_move)
                 else:
                     if success:
@@ -150,8 +171,9 @@ class PipeServer(Node):
                         self.mode_selection.set_idling()
                         cmd_move.linear.x = 0.0
                         cmd_move.angular.z = 0.0
-                        mode = 0
+                        mode = result_mode
                         self.cmd_pub.publish(cmd_move)
+                        self.send_goal(speed, mode)
                         break
                     self.cmd_pub.publish(cmd_move)
             

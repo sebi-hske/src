@@ -31,7 +31,7 @@ class DriveNode:
             cmd.angular.z = angular_velocity
 
             # Steuerbefehl senden
-            return cmd, False
+            return cmd, False, 2
         else:
             self.stop_robot()
 
@@ -40,4 +40,4 @@ class DriveNode:
         cmd = Twist()
         cmd.linear.x = 0.0
         cmd.angular.z = 0.0
-        return cmd, True
+        return cmd, True, 1

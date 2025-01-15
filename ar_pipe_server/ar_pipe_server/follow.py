@@ -45,9 +45,10 @@ class FollowerNode:
             
 
             #self.get_logger().info(f"Steuerung: linear={cmd.linear.x:.2f}, angular={cmd.angular.z:.2f}, Marker-ID={marker_id}, Distanz={distance:.2f}")
-            print(linear_velocity)
-            print(angular_velocity)
-            return cmd, False
+            
+            #print(linear_velocity)
+            #print(angular_velocity)
+            return cmd, False, 3
         else:
             #self.get_logger().warn("Kein Offset-Tupel verfügbar, Roboter bleibt stehen.")
             self.stop_robot()
@@ -57,4 +58,4 @@ class FollowerNode:
         cmd = Twist()
         cmd.linear.x = 0.0
         cmd.angular.z = 0.0
-        return cmd, True
+        return cmd, True, 0

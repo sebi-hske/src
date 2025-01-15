@@ -1,5 +1,6 @@
 #goal
 float32 velocity
+uint32  mode
 ---
 #result
 bool reached
