@@ -159,6 +159,7 @@ class PipeServer(Node):
                         self.mode_selection.set_idling()
 
                     cmd_move, success, result_mode = self.mode_selection.select_mode(self.data_tuple, speed, self.current_angle)
+                    mode = result_mode
                 except:
                     print("no movement cmd")
                     self.cmd_move.linear.x = 0.0
@@ -169,13 +170,15 @@ class PipeServer(Node):
                     if success:
                         print("success")
                         self.mode_selection.set_idling()
-                        cmd_move.linear.x = 0.0
-                        cmd_move.angular.z = 0.0
-                        mode = result_mode
+                        self.cmd_move.linear.x = 0.0
+                        self.cmd_move.angular.z = 0.0
                         self.cmd_pub.publish(cmd_move)
+                        time.sleep(2.0)
                         self.send_goal(speed, mode)
                         break
+                    #mode = result_mode
                     self.cmd_pub.publish(cmd_move)
+                    #self.send_goal(speed, mode)
             
             finally:
                 

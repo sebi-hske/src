@@ -4,7 +4,7 @@ import math
 import time
 
 ANGLE_THRESHOLD = 0.04
-ANGULAR_VELOCITY = 0.4 
+ANGULAR_VELOCITY = 0.3 
 
 class TurningNode:
     
@@ -24,7 +24,8 @@ class TurningNode:
         cmd = Twist()
         cmd.linear.x = 0.0 #Keine Vorwärtsbewegung während des Wendens
         #Berechne die Abweichung zum Zielwinkel
-        if target_angle < 0:    
+        if target_angle < 0: 
+            target_angle = target_angle * -1.0   
             angular_error = target_angle + current_angle
         else:
             angular_error = target_angle - current_angle
@@ -32,9 +33,13 @@ class TurningNode:
         if angular_error < 0:
             angular_error = angular_error * -1.0
         print("abweichung " + str(angular_error))
+        #if angular_error > 3.2:
+        #    cmd.angular.z = 0.0
+        #    return cmd, True, 2
         if angular_error < ANGLE_THRESHOLD:
             print("zielwinkel erreicht")
             cmd.angular.z = 0.0
+
             return cmd, True, 2
         else: 
             cmd.angular.z = ANGULAR_VELOCITY
