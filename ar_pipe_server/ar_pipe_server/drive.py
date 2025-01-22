@@ -3,7 +3,7 @@ import time
 
 TURNING_RATE = 3.0      #Regelungsfaktor
 MID_GOAL = 0.35         #Wert auf den geregelt wird
-DISTANCE = 1.5
+DISTANCE = 0.3          #Abstand in Metern
 
 
 class DriveNode:
@@ -19,8 +19,8 @@ class DriveNode:
             #print(str(rel_offset)            
             angular_velocity = MID_GOAL - rel_offset
             angular_velocity = angular_velocity * -TURNING_RATE
-
-            if distance < DISTANCE:
+            
+            if distance < (DISTANCE*4.4):
                 print("distance below threshold")
                 time.sleep(2.0)
                 return self.stop_robot()

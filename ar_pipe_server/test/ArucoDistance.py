@@ -5,10 +5,10 @@ import cv2 as cv
 import numpy as np
 import os
 
-MARKERSIZE = 0.07                 #immer beide werte beachten!!
-DISTANCE_COEFFICIANT = 100    #_V_V_V_V_V_V_V_V_V_V_V_V_V_
-CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/ar_pipe_server/ar_pipe_server/calibration.npz'     #lokale maschine
-#CALIBRATION_DATA_PATH = '/home/ubuntu/calibration.npz'      #robbi
+MARKERSIZE = 0.1
+
+#CALIBRATION_DATA_PATH = '/home/sebi/ros2_ws/src/ar_pipe_server/ar_pipe_server/calibration.npz'     #lokale maschine
+CALIBRATION_DATA_PATH = '/home/ubuntu/calibration.npz'      #robbi
 ARUCO_DICT = cv.aruco.DICT_4X4_50
 
 class ArucoDistance(Node):
@@ -23,7 +23,7 @@ class ArucoDistance(Node):
         self.camera_matrix = None  # Placeholder for camera matrix
         self.distortion_coefficients = None  # Placeholder for distortion coefficients
 
-        timer_period = 0.02  # Publishes data every 0.2 seconds (50Hz)
+        timer_period = 0.02  # Publishes data every 0.02 seconds (50Hz)
         self.timer = self.create_timer(timer_period, self.timer_callback)       #start loop  
 
         # Load calibration data and set camera matrix and distortion coefficients
@@ -62,14 +62,14 @@ class ArucoDistance(Node):
         corners, ids, _ = cv.aruco.detectMarkers(frame, self.aruco_dict, parameters=self.aruco_params)
         self.marker_tuple = (corners, ids)        
         if self.marker_tuple[0] is not None and len(self.marker_tuple[0]) > 0:
-            rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(                                       #opencv version auf roboter??
+            rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(                                      
                 self.marker_tuple[0], MARKERSIZE, self.camera_matrix, self.distortion_coefficients
             )
             distance = np.sqrt(tvecs[0][0][2] ** 2 + tvecs[0][0][0] ** 2 + tvecs[0][0][1] ** 2)
             offset_single_marker = (tvecs[0][0][0],)
             self.marker_tuple += offset_single_marker
            
-            return distance #/ DISTANCE_COEFFICIANT      
+            return distance     
         else:
             return None
       

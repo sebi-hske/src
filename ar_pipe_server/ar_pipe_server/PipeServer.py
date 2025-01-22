@@ -74,12 +74,17 @@ class PipeServer(Node):
 
     def goal_callback(self, goal_request):
         goal_request.velocity = float("%.2f" % goal_request.velocity)
+        goal_request.distance = float("%.2f" % goal_request.distance)
+
         self.get_logger().info('Recieved goal to start driving with velocity: ' + str(goal_request.velocity))
 
         if goal_request.velocity > 0.2:
             goal_request.velocity = 0.2
             self.get_logger().info('Velocity too high, defauling to 0.2')
-        
+        if goal_request.distance < 0.2 or goal_request.distance > 1.0:
+            goal_request.distance = 0.5
+            self.get_logger().info('Following Distance out of Range, defauling to 0.5')
+
 
         return GoalResponse.ACCEPT
     
@@ -103,6 +108,7 @@ class PipeServer(Node):
     def execute_callback(self, goal_handle):
         self.get_logger().info('Starting to drive with velocity: ' + str(goal_handle.request.velocity))
         speed = goal_handle.request.velocity
+        dst_to_follow = goal_handle.request.distance
         self.mode_selection.set_idling()
         while True:
             try:
@@ -158,7 +164,7 @@ class PipeServer(Node):
                     elif id == 0:
                         self.mode_selection.set_idling()
 
-                    cmd_move, success, result_mode = self.mode_selection.select_mode(self.data_tuple, speed, self.current_angle)
+                    cmd_move, success, result_mode = self.mode_selection.select_mode(self.data_tuple, speed, self.current_angle, dst_to_follow)
                     mode = result_mode
                 except:
                     print("no movement cmd")

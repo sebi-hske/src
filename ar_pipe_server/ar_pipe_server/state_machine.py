@@ -23,7 +23,7 @@ class ModeSelection:
     def cancel_target(self):
         self._state = _State.IDLING
 
-    def select_mode(self, data_tuple, velocity, current_angle):            
+    def select_mode(self, data_tuple, velocity, current_angle, dst_to_follow):            
         
         if self._state == _State.IDLING:
             cmd = Twist()
@@ -35,7 +35,7 @@ class ModeSelection:
         elif self._state == _State.TURN:
             return self.turn(current_angle)
         elif self._state == _State.FOLLOW:
-            return self.follow(data_tuple)
+            return self.follow(data_tuple, dst_to_follow)
         else: 
             return None
         
@@ -67,7 +67,7 @@ class ModeSelection:
         return TurningNode().perform_turning(self.target_angle, current_angle)
 
 
-    def follow(self, data_tuple):
+    def follow(self, data_tuple, dst_to_follow):
         print("following")
         #self._state = _State.IDLING
-        return FollowerNode().follow_target(data_tuple)
+        return FollowerNode().follow_target(data_tuple, dst_to_follow)

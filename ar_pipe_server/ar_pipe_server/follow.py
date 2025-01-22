@@ -15,12 +15,12 @@ class FollowerNode:
     #timer_period = 0.001
     #self.timer = create_timer(timer_period, self.offset_callback)        
 
-    def follow_target(self, offset_tuple):
+    def follow_target(self, offset_tuple, dst_to_follow):
         if offset_tuple is not None:
             #Tupel extrahieren: (Marker-ID, Offset, Distanz)
             marker_id, offset, distance = offset_tuple
            
-
+            self.desired_distance = dst_to_follow * 4.4
 
             #Abstandskontrolle (linear.x)
             distance_error = self.desired_distance - distance
