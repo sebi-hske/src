@@ -57,12 +57,12 @@ class ModeSelection:
         print("target set " + str(self.target_angle))
         
     def drive(self, data_tuple, velocity):
-        print("driving with speed: " + str(velocity))
+        #print("driving with speed: " + str(velocity))
         #self._state = _State.IDLING        
         return DriveNode().drive(data_tuple, velocity)
 
     def turn(self, current_angle):
-        print("turning")
+        #print("turning")
         #self._state = _State.IDLING
         return TurningNode().perform_turning(self.target_angle, current_angle)
 

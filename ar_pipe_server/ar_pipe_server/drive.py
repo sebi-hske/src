@@ -22,7 +22,6 @@ class DriveNode:
             
             if distance < (DISTANCE*4.4):
                 print("distance below threshold")
-                time.sleep(2.0)
                 return self.stop_robot()
             
             

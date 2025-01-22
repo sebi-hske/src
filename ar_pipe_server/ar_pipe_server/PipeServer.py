@@ -46,9 +46,10 @@ class PipeServer(Node):
         self.mode_selection = ModeSelection()
         #ArucoDistance()
 
-    def send_goal(self, velocity, mode):
+    def send_goal(self, velocity, dst_to_follow, mode):
         goal_msg = Mode.Goal()
         goal_msg.velocity = velocity
+        goal_msg.distance = dst_to_follow
         goal_msg.mode = mode
 
         self.action_client.wait_for_server()
@@ -144,7 +145,7 @@ class PipeServer(Node):
 
                 
                 mode = goal_handle.request.mode
-                print(mode)
+                #print(mode)
                 id = int(id)
                 
                 try:
@@ -180,7 +181,7 @@ class PipeServer(Node):
                         self.cmd_move.angular.z = 0.0
                         self.cmd_pub.publish(cmd_move)
                         time.sleep(2.0)
-                        self.send_goal(speed, mode)
+                        self.send_goal(speed, dst_to_follow, mode)
                         break
                     #mode = result_mode
                     self.cmd_pub.publish(cmd_move)
