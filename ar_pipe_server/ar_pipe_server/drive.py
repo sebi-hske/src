@@ -17,23 +17,13 @@ class DriveNode:
             offset = offset * -1.0
             rel_offset = offset / distance
             #print(str(rel_offset)            
-<<<<<<< HEAD
             angular_velocity = MID_GOAL - rel_offset
             angular_velocity = angular_velocity * -TURNING_RATE
             
             if distance < (DISTANCE*4.4):
                 print("distance below threshold")
                 return self.stop_robot()
-            
-            
-=======
-            angular_velocity = (MID_GOAL - rel_offset) * -TURNING_RATE
-            #angular_velocity = angular_velocity * -TURNING_RATE
-
-            if distance < 3.0:
-                return self.stop_robot()            
->>>>>>> 2bbe7c801e944e6b9d56c9e0df5e97d13a1a1f90
-            
+                        
             # Steuerbefehl generieren
             cmd = Twist()
             cmd.linear.x = velocity
@@ -49,8 +39,6 @@ class DriveNode:
         cmd = Twist()
         cmd.linear.x = 0.0
         cmd.angular.z = 0.0
-<<<<<<< HEAD
+
         return cmd, True, 1
-=======
-        return cmd
->>>>>>> 2bbe7c801e944e6b9d56c9e0df5e97d13a1a1f90
+
