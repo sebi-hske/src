@@ -41,4 +41,3 @@ class DriveNode:
         cmd.angular.z = 0.0
 
         return cmd, True, 1
-
