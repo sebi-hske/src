@@ -1,7 +1,9 @@
 #goal
 float32 velocity
+float32 distance
+uint32  mode
 ---
 #result
-bool finished
+bool reached
 ---
 #feedback
