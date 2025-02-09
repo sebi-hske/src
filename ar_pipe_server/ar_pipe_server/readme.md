@@ -53,9 +53,10 @@ python3 ArucoDistance.py
     + 0: Ruhemodus
     + 1: Drehen
     + 2: Fahren
+  + Der Modus kann Standarmäßig auf 2 belassen werden da dies für die Funktion des Systems nicht relevant ist
 
 ```bash
-ros2 action send_goal /velocity ar_interface/action/Mode "{velocity: 0.0, distance: 0.5, mode: 0}"
+ros2 action send_goal /velocity ar_interface/action/Mode "{velocity: 0.0, distance: 0.5, mode: 2}"
 ```
 
 
