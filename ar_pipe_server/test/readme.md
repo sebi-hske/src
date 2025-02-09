@@ -50,4 +50,4 @@
   ```
 * PipeServer in neuen Terminal wie in genereller Anleitung beschrieben starten.
 * Goal senden mit `mode: 2` oder `mode: 1` und beliebiger Geschwindigkeit (> 0.0) sowie beliebigem Abstand
-* Werden vom Roboter Marker erkannt, werden die korrespondierenden Bewegungsbefehle auf dem Terminal ausgegeben in dem die Node vel_listener gestartet wurde
+* Werden vom Roboter Marker erkannt, werden die korrespondierenden Bewegungsbefehle auf dem Terminal ausgegeben in dem die Node vel_listener gestartet wurde.
