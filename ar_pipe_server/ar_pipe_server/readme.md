@@ -48,13 +48,14 @@ python3 ArucoDistance.py
 * Neue Konsole öffnen und die Umgebung sourcen `source install/setup.bash`
 * Goal senden
   + velocity: Fahrgeschwindigkeit in m/s
+  + distance: Abstand der zum anderen Roboter gehalten wird
   + mode: Fahrmodus der beim starten aktiviert wird
     + 0: Ruhemodus
     + 1: Drehen
     + 2: Fahren
 
 ```bash
-ros2 action send_goal /velocity ar_interface/action/Mode "{velocity: 0.0, mode: 0}"
+ros2 action send_goal /velocity ar_interface/action/Mode "{velocity: 0.0, distance: 0.5, mode: 0}"
 ```
 
 
