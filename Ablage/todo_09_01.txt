@@ -1,5 +1,0 @@
-mehrere actions (und server) für jeden modus
-
-return erfolgreicher abschluss -> starten der nächsten action auch automatisch
-
-ausführen -> follow als interrupt -> resume action davor

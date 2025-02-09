@@ -7,7 +7,7 @@
     + Über SSH mit Roboter verbinden
     + ArucoDistance.py auf Roboter starten
   
-* Auf lokaler Maschine in `ros2_ws/src/ar_pipe_server/test` navigieren
+* Auf lokaler Maschine in neuem Terminal in `ros2_ws/src/ar_pipe_server/test` navigieren
 * Node starten um auf Topic der Daten vom Roboter zuzugreifen
   ```bash
   python3 aruco_listener.py
@@ -22,8 +22,11 @@
 * Wie in der generellen Anleitung beschrieben:
     + Roboter starten
     + Über SSH mit Roboter verbinden
-    + Turtlebot Node starten
-* Auf lokaler Maschine in `ros2_ws/src/ar_pipe_server/test` navigieren
+    + Turtlebot Node starten mit
+    ```bash
+    ros2 launch turtlebot3_bringup robot.launch.py
+    ```  
+* Auf lokaler Maschine in neuem Terminal in `ros2_ws/src/ar_pipe_server/test` navigieren
 * Node starten um auf Topic der Daten vom Roboter zuzugreifen
   ```bash
   python3 odometry_listener.py
@@ -40,7 +43,11 @@
     + ArucoDistance.py auf Roboter starten
 >[!CAUTION]
 >Die Turtlebot Node nicht starten, der Roboter soll keine Bewegungskommandos empfangen.
-
+* Auf lokaler Maschine in neuem Terminal in `ros2_ws/src/ar_pipe_server/test` navigieren
+* Node starten um auf Topic der Daten vom Roboter zuzugreifen
+  ```bash
+  python3 vel_listener.py
+  ```
 * PipeServer wie in genereller Anleitung beschrieben starten.
-* Goal senden mit `mode: 2` oder `mode: 1`
-* Werden vom Roboter Marker erkannt, werden die korrespondierenden Bewegungsbefehle auf dem Terminal augegeben
+* Goal senden mit `mode: 2` oder `mode: 1` und beliebiger Geschwindigkeit (> 0.0) sowie beliebigem Abstand
+* Werden vom Roboter Marker erkannt, werden die korrespondierenden Bewegungsbefehle auf dem Terminal ausgegeben in dem die 
