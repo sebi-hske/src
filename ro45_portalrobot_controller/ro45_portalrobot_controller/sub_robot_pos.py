@@ -8,7 +8,7 @@ class Subscriber(Node):
         super().__init__('ro45_portalrobot_controller_sub')
         self.subscription = self.create_subscription(
             RobotPos,
-            'RobotPos',
+            'robot_position',
             self.listener_callback,
             10)
         self.subscription  # prevent unused variable warning

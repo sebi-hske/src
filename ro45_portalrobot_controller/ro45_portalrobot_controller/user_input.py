@@ -6,7 +6,7 @@ from ro45_portalrobot_interfaces.msg import RobotCmd
 class Publisher(Node):
     def __init__(self):
         super().__init__('ro45_portalrobot_controller_pub')
-        self.publisher_ = self.create_publisher(RobotCmd, 'RobotCmd', 10)
+        self.publisher_ = self.create_publisher(RobotCmd, 'robot_command', 10)
         timer_period = 1.0 
         self.timer = self.create_timer(timer_period, self.timer_callback)
 

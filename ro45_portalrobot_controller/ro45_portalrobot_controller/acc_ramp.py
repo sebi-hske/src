@@ -7,11 +7,11 @@ from ro45_portalrobot_interfaces.msg import RobotCmd
 class Publisher(Node):
     def __init__(self):
         super().__init__('ro45_portalrobot_controller_pub')
-        publisher = self.create_publisher(RobotCmd, 'RobotCmd', 10)
+        publisher = self.create_publisher(RobotCmd, 'robot_command', 10)
 
-        pos_acc_time = 1
-        neg_acc_time = 1
-        zero_time = 1
+        pos_acc_time = 0.2
+        neg_acc_time = 0.2
+        zero_time = 0.5
         
         msg = RobotCmd()
         msg.accel_x = 0.0

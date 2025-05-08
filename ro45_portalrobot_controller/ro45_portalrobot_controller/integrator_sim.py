@@ -10,11 +10,11 @@ class DoubleIntegrator(Node):
         super().__init__('double_integrator')
         self.subscription = self.create_subscription(
             RobotCmd,
-            'cmd_accel',
+            'robot_command',
             self.accel_callback,
             10
         )
-        self.publisher_ = self.create_publisher(RobotPos, 'RobotPos', 10)
+        self.publisher_ = self.create_publisher(RobotPos, 'robot_position', 10)
 
         self.timer_period = 0.1 
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
