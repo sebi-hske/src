@@ -29,7 +29,7 @@ class DoubleIntegrator(Node):
         self.pos_y = 0.0
         self.pos_z = 0.0
 
-    def accel_callback(self, msg):
+    def accel_callback(self, msg:RobotCmd):
         self.accel_x = msg.accel_x
         self.accel_y = msg.accel_y
         self.accel_z = msg.accel_z
