@@ -8,7 +8,7 @@ from ro45_portalrobot_interfaces.msg import RobotCmd
 class Publisher(Node):
     def __init__(self):
         super().__init__('ro45_portalrobot_controller_pub')
-        self.publisher_ = self.create_publisher(RobotCmd, 'cmd_accel', 10)
+        self.publisher_ = self.create_publisher(RobotCmd, 'RobotCmd', 10)
 
 
         self.min_value = 0.0  # Minimum value for the ramp

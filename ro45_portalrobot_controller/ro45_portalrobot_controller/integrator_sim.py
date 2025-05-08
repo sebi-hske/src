@@ -14,7 +14,7 @@ class DoubleIntegrator(Node):
             self.accel_callback,
             10
         )
-        self.publisher_ = self.create_publisher(RobotPos, 'position', 10)
+        self.publisher_ = self.create_publisher(RobotPos, 'RobotPos', 10)
 
         self.timer_period = 0.1 
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
