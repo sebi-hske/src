@@ -3,8 +3,6 @@ from rclpy.node import Node
 
 from std_msgs.msg import Float32
 
-
-
 class PositionInput(Node):
     def __init__(self):
         super().__init__('position_input')
@@ -17,7 +15,6 @@ class PositionInput(Node):
     def timer_callback(self):
         self.get_position()
         
-
     def get_position(self):
         try:
             pos_cmd = input(f"Enter desired position: ")
@@ -25,11 +22,9 @@ class PositionInput(Node):
             if pos_cmd.strip():
                 self.msg.data = float(pos_cmd)
             
-
         except ValueError:
             self.get_logger().warn("Invalid input. Please enter numeric values.")
 
-        
         self.publisher.publish(self.msg)
 
 def main(args=None):

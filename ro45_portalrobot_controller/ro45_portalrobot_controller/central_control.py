@@ -6,8 +6,8 @@ from ro45_portalrobot_interfaces.msg import RobotPos
 from std_msgs.msg import Float32
 from pd_regler import PDRegler
 
-P_VALUE = 10.0
-D_VALUE = 0.1
+P_VALUE = 2.0
+D_VALUE = 1.0
 
 class CentralControl(Node):
     def __init__(self):
@@ -37,6 +37,13 @@ class CentralControl(Node):
 
         self.timer_period = 0.1
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
+        self.calibration()  
+
+    def calibration(self):
+        #implement calibration for all 3 axis (x,y,z)
+        #step all axis to zero position
+        #set all position values to zero
+        pass
 
     def pos_callback(self, msg):
         self.pos_x = msg.pos_x
@@ -45,7 +52,6 @@ class CentralControl(Node):
 
     def cmd_callback(self, msg):
         self.desired_pos_x = msg.data
-       
 
     def call_pd_controller(self):
         try:  
