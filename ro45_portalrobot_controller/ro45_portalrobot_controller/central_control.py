@@ -1,6 +1,5 @@
 import rclpy
 from rclpy.node import Node
-import time
 
 from ro45_portalrobot_interfaces.msg import RobotCmd
 from ro45_portalrobot_interfaces.msg import RobotPos
@@ -33,12 +32,9 @@ class CentralControl(Node):
         self.msg = RobotCmd()
 
         self.pd_control = PDRegler(P_VALUE, D_VALUE)        #initialize PD controller
-
-        self.timer_period = 0.1
-        self.timer = self.create_timer(self.timer_period, self.timer_callback)
-
+        
         self.calibration()
-
+           
     def calibration(self):
         #implement calibration for all 3 axis (x,y,z)
         #step all axis to zero position
@@ -51,12 +47,12 @@ class CentralControl(Node):
         self.msg.accel_z = 0.0      #!! set direction !!
         self.publish_command()
 
-        self.calibration_wait_time = 10.0
+        self.calibration_wait_time = 1.0    #set time to wait for calibration
         self.calibration_elapsed_time = 0.0
 
     def calibration_callback(self):
         self.calibration_elapsed_time += self.calib_timer
-
+        self.get_logger().info("Waiting for calibration to finish...")
         if self.calibration_elapsed_time >= self.calibration_wait_time:
             self.calibration_timer.cancel()
             self.msg.accel_x = 0.0
@@ -69,6 +65,8 @@ class CentralControl(Node):
             pos_msg.pos_z = 0.0
             self.publisher_pos.publish(pos_msg)
             self.get_logger().info("Calibration finished. Robot is in zero position.")
+            self.timer_period = 0.1
+            self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
     def timer_callback(self):
         fault = self.call_pd_controller()
@@ -92,7 +90,9 @@ class CentralControl(Node):
         return fault
     
     def publish_command(self):
-        self.get_logger().info("Publishing -> accel_x: {:.2f}".format(self.msg.accel_x))
+        self.get_logger().info("Publishing -> accel_x: {:.2f}".format(self.msg.accel_x) +
+                               ", accel_y: {:.2f}".format(self.msg.accel_y) +
+                               ", accel_z: {:.2f}".format(self.msg.accel_z))
         self.publisher_cmd.publish(self.msg)
 
     
