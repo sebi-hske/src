@@ -12,9 +12,9 @@ class Publisher(Node):
 
 
         self.min_value = 0.0  # Minimum value for the ramp
-        self.max_value = 0.1  # Maximum value for the ramp
-        self.ramp_up_time = 2  # Time to ramp up (seconds)
-        self.ramp_down_time = 2  # Time to ramp down (seconds)
+        self.max_value = 0.01  # Maximum value for the ramp
+        self.ramp_up_time = 1  # Time to ramp up (seconds)
+        self.ramp_down_time = 1  # Time to ramp down (seconds)
         self.step_time = 0.1  # Time between steps (seconds)
 
         self.ramp()

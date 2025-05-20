@@ -7,8 +7,8 @@ from std_msgs.msg import Float32
 from pd_regler import PDRegler
 from ro45_action_interfaces.action import MovetoPos
 
-P_VALUE = 2.0
-D_VALUE = 1.0
+P_VALUE = 0.01
+D_VALUE = 0.45
 
 class CentralControl(Node):
     def __init__(self):
@@ -42,12 +42,13 @@ class CentralControl(Node):
         self.calib_timer = 0.1
         self.calibration_timer = self.create_timer(self.calib_timer, self.calibration_callback)
 
-        self.msg.accel_x = 0.2
+        self.msg.accel_x = 0.0
         self.msg.accel_y = 0.0      #!! set direction !!
         self.msg.accel_z = 0.0      #!! set direction !!
-        self.publish_command()
+        self.publish_command()      
+                                    #add ramp-up / down
 
-        self.calibration_wait_time = 1.0    #set time to wait for calibration
+        self.calibration_wait_time = 0.1    #set time to wait for calibration
         self.calibration_elapsed_time = 0.0
 
     def calibration_callback(self):
@@ -60,17 +61,17 @@ class CentralControl(Node):
             self.msg.accel_z = 0.0
             self.publish_command()
             pos_msg = RobotPos()
-            pos_msg.pos_x = 0.0
+            pos_msg.pos_x = 0.0     #offset
             pos_msg.pos_y = 0.0
             pos_msg.pos_z = 0.0
-            self.publisher_pos.publish(pos_msg)
+            #self.publisher_pos.publish(pos_msg)
             self.get_logger().info("Calibration finished. Robot is in zero position.")
             self.timer_period = 0.1
             self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
     def timer_callback(self):
-        fault = self.call_pd_controller()
-        self.msg.accel_x = fault
+        u = self.call_pd_controller()
+        self.msg.accel_x = u
         self.publish_command()
            
     def pos_callback(self, msg):
@@ -83,17 +84,17 @@ class CentralControl(Node):
 
     def call_pd_controller(self):
         try:  
-            fault = self.pd_control.berechne(self.desired_pos_x, self.pos_x, self.timer_period)
+            u = self.pd_control.berechne(self.desired_pos_x, self.pos_x, self.timer_period)
         except AttributeError:
             self.get_logger().warn("Desired position not set. Please set the desired position first.")
-            fault = 0.0
-        return fault
+            u = 0.0
+        return u
     
     def publish_command(self):
-        self.get_logger().info("Publishing -> accel_x: {:.2f}".format(self.msg.accel_x) +
+        self.publisher_cmd.publish(self.msg)
+        self.get_logger().info("Publishing -> accel_x: {:.6f}".format(self.msg.accel_x) +
                                ", accel_y: {:.2f}".format(self.msg.accel_y) +
                                ", accel_z: {:.2f}".format(self.msg.accel_z))
-        self.publisher_cmd.publish(self.msg)
 
     
 

@@ -9,8 +9,8 @@ class Publisher(Node):
         super().__init__('ro45_portalrobot_controller_pub')
         publisher = self.create_publisher(RobotCmd, 'robot_command', 10)
 
-        pos_acc_time = 0.2
-        neg_acc_time = 0.2
+        pos_acc_time = 1
+        neg_acc_time = 1
         zero_time = 0.5
         
         msg = RobotCmd()
