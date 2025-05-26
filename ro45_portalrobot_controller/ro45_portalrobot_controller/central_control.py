@@ -51,9 +51,9 @@ class CentralControl(Node):
         #implement calibration for all 3 axis (x,y,z)
         #step all axis to zero position
         #set all position values to zer0
-        self.msg.accel_x = -0.2
-        self.msg.accel_y = 0.0      #!! set direction !!
-        self.msg.accel_z = 0.0      #!! set direction !!
+        self.msg.accel_x = -0.1
+        self.msg.accel_y = 0.05      #!! set direction !!
+        self.msg.accel_z = -0.02     #!! set direction !!
         self.publish_command() 
 
         self.calibration_wait_time = 5.0    #set time to wait for calibration
