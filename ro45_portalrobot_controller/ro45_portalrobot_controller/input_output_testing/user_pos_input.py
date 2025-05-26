@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import Float32
+from ro45_portalrobot_interfaces.msg import RobotPos
 
 class PositionInput(Node):
     def __init__(self):
@@ -9,21 +9,30 @@ class PositionInput(Node):
         self.timer_period = 0.1
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
-        self.publisher = self.create_publisher(Float32, 'position_command', 10)
-        self.msg = Float32()
+        self.publisher = self.create_publisher(RobotPos, 'user_input_position', 10)
+        self.msg = RobotPos()
 
     def timer_callback(self):
         self.get_position()
         
     def get_position(self):
         try:
-            pos_cmd = input(f"Enter desired position: ")
+            pos_x_input = input("Enter new value X or press Enter to keep: ")
+            pos_y_input = input("Enter new value Y or press Enter to keep: ")
+            pos_z_input = input("Enter new value Z or press Enter to keep: ")
+
            
-            if pos_cmd.strip():
-                self.msg.data = float(pos_cmd)
+            if pos_x_input.strip():
+                self.msg.pos_x = float(pos_x_input)
+            if pos_y_input.strip():
+                self.msg.pos_y = float(pos_y_input)
+            if pos_z_input.strip():
+                self.msg.pos_z = float(pos_z_input)
             
+            print("-------------------------------------------")
+
         except ValueError:
-            self.get_logger().warn("Invalid input. Please enter numeric values.")
+            self.get_logger().info("Invalid input. Please enter numeric values.")
 
         self.publisher.publish(self.msg)
 
