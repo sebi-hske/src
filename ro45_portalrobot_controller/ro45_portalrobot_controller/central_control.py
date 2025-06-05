@@ -11,14 +11,14 @@ import threading
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 
-P_VALUE_X = 0.1
-D_VALUE_X = 0.9 # up from 0.7 default, possible delay in execute callback
+P_VALUE_X = 0.15
+D_VALUE_X = 1.5 # up from 0.7 default, possible delay in execute callback
 
 P_VALUE_Y = 0.08
-D_VALUE_Y = 0.7
+D_VALUE_Y = 1.1
 
-P_VALUE_Z = 0.1
-D_VALUE_Z = 0.7
+P_VALUE_Z = 0.4 #0.4
+D_VALUE_Z = 2.8 #1.9
 
 class CentralControl(Node):
     def __init__(self):
@@ -78,7 +78,7 @@ class CentralControl(Node):
         self.get_logger().info("Received goal request to move to position: " + str(goal_request))
         self.desired_pos_x = (goal_request.position_x - self.corr_val_x) * -1.0
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
-        self.desired_pos_z = (goal_request.position_z - self.corr_val_z) #* -1.0
+        self.desired_pos_z = (goal_request.position_z - self.corr_val_z) # *-1.0
         self.get_logger().info("corrected positions for robot "+  str(self.desired_pos_x)+str(self.desired_pos_y)+str(self.desired_pos_z))
         return GoalResponse.ACCEPT
     
@@ -100,12 +100,12 @@ class CentralControl(Node):
         #implement calibration for all 3 axis (x,y,z)
         #step all axis to zero position
         #set all position values to zer0
-        self.msg.accel_x = 0.01
-        self.msg.accel_y = 0.0002      #!! set direction !!
-        self.msg.accel_z = 0.0     #!! set direction !!
+        self.msg.accel_x = 0.01     #positive values
+        self.msg.accel_y = 0.002    #positive values
+        self.msg.accel_z = -0.002      #negative values
         self.publish_command() 
 
-        self.calibration_wait_time = 10.0    #set time to wait for calibration
+        self.calibration_wait_time = 20.0    #set time to wait for calibration
         self.calibration_elapsed_time = 0.0
         self.calib_timer = 0.1
         self.calibration_timer = self.create_timer(self.calib_timer, self.calibration_callback)
