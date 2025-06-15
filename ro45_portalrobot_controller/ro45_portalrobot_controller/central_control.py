@@ -67,18 +67,24 @@ class CentralControl(Node):
         self.calibration()
 
     def execute_callback(self, goal_handle):
-        self.get_logger().info("Executing goal...")
-        self.timer_period = 0.01
-        self.timer = self.create_timer(self.timer_period, self.timer_callback)
-        goal_handle.succeed()    
-        result = MovetoPos.Result()    
-        return result
+        try:
+            self.get_logger().info("Executing goal...")
+            self.timer_period = 0.01
+            self.timer = self.create_timer(self.timer_period, self.timer_callback)
+            goal_handle.succeed()    
+            result = MovetoPos.Result()    
+            return result
+        except Exception as e:
+            self.get_logger().error(f"Error during goal execution: {e}")
+            goal_handle.abort()
+            self.failsafe_hold_pos()
+            return None
     
     def goal_callback(self, goal_request):
         self.get_logger().info("Received goal request to move to position: " + str(goal_request))
         self.desired_pos_x = (goal_request.position_x - self.corr_val_x) * -1.0
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
-        self.desired_pos_z = (goal_request.position_z - self.corr_val_z) # *-1.0
+        self.desired_pos_z = (goal_request.position_z - self.corr_val_z) # * -1.0
         self.get_logger().info("corrected positions for robot "+  str(self.desired_pos_x)+str(self.desired_pos_y)+str(self.desired_pos_z))
         return GoalResponse.ACCEPT
     
@@ -92,14 +98,38 @@ class CentralControl(Node):
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info("Goal cancelled. Stopping execution")
-        self.timer.cancel()
+        self.failsafe_hold_pos()
         goal_handle.canceled()
         return CancelResponse.ACCEPT
            
+    def set_zero(self):
+        self.msg.accel_x = 0.0
+        self.msg.accel_y = 0.0
+        self.msg.accel_z = 0.0
+        self.publish_command()
+
+    def revert_last_cmd(self):
+        self.msg.accel_x = self.msg.accel_x * -1.0
+        self.msg.accel_y = self.msg.accel_y * -1.0
+        self.msg.accel_z = self.msg.accel_z * -1.0
+        self.publish_command()
+
+    def failsafe_hold_pos(self):
+        #hold position in case of emergency
+        self.timer.cancel()
+        self.get_logger().warn("Failsafe activated. Holding position.")
+        self.desired_pos_x, self.desired_pos_y, self.desired_pos_z = self.pos_x, self.pos_y, self.pos_z
+        if (self.pos_z + self.corr_val_z) > 0.05:
+            self.desired_pos_z = 0.05 - self.corr_val_z
+        self.failsafe_timer = self.create_timer(0.1, self.timer_callback)
+        
+
+        
+
     def calibration(self):
         #implement calibration for all 3 axis (x,y,z)
         #step all axis to zero position
-        #set all position values to zer0
+        #set all position values to zero
         self.msg.accel_x = 0.01     #positive values
         self.msg.accel_y = 0.002    #positive values
         self.msg.accel_z = -0.002      #negative values
@@ -117,10 +147,7 @@ class CentralControl(Node):
             self.calibration_timer.cancel()
 
             #set values to zero for non simulation runs
-            self.msg.accel_x = 0.0
-            self.msg.accel_y = 0.0
-            self.msg.accel_z = 0.0
-            self.publish_command()
+            self.set_zero()
             
             self.set_correction_values()
             print(self.corr_val_x, self.corr_val_y, self.corr_val_z)
@@ -154,7 +181,6 @@ class CentralControl(Node):
     """
     def call_pd_controller(self):
         try:  
-            
             u_x = self.pd_control_x.berechne(self.desired_pos_x, self.pos_x, self.timer_period)
             u_y = self.pd_control_y.berechne(self.desired_pos_y, self.pos_y, self.timer_period)
             u_z = self.pd_control_z.berechne(self.desired_pos_z, self.pos_z, self.timer_period)
