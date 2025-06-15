@@ -1,0 +1,10 @@
+#goal
+float32 position_x
+float32 position_y
+float32 time 
+---
+#result
+bool reached
+---
+#feedback
+float32 time_remaining
