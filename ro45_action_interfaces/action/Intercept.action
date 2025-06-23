@@ -2,6 +2,7 @@
 float32 position_x
 float32 position_y
 float32 time 
+int32 object_class
 ---
 #result
 bool reached

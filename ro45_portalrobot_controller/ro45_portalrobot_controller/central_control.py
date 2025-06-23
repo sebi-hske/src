@@ -11,17 +11,19 @@ from rclpy.action import ActionServer, CancelResponse, GoalResponse
 import threading
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
-from ro45_portalrobot_controller.intercept import Interceptor
-from ro45_portalrobot_controller.move_to_point import MoveToPoint
+from rclpy.action import ActionClient
 
 P_VALUE_X = 0.15
-D_VALUE_X = 1.5 # up from 0.7 default, possible delay in execute callback
+D_VALUE_X = 1.8 # up from 0.7 default, possible delay in execute callback
 
 P_VALUE_Y = 0.08
-D_VALUE_Y = 1.1
+D_VALUE_Y = 1.6
 
 P_VALUE_Z = 0.4 #0.4
-D_VALUE_Z = 2.8 #1.9
+D_VALUE_Z = 3.0 #1.9
+
+INTERCEPT_Z = 0.03  # Intercepting at release level
+PICKUP_Z = 0.04  # Pickup level for the object
 
 class CentralControl(Node):
     def __init__(self):
@@ -62,9 +64,8 @@ class CentralControl(Node):
             handle_accepted_callback=self.handle_accepted_callback,
             cancel_callback=self.cancel_callback
         )
-    
-        # Movement limits
-        self.max_acceleration = 0.12
+
+        self.action_client = ActionClient(self, MovetoPos, 'move_to_position')
         
         self.publisher_cmd = self.create_publisher(RobotCmd, 'robot_command', 10)
         self.msg = RobotCmd()
@@ -80,12 +81,16 @@ class CentralControl(Node):
         self.pd_control_y = PDRegler(P_VALUE_Y, D_VALUE_Y)
         self.pd_control_z = PDRegler(P_VALUE_Z, D_VALUE_Z)
         
+        self.timer_period = 0.01  
         self.calibration()
 
     def position_execute_callback(self, goal_handle):
+        if hasattr(self, 'failsafe_timer') and self.failsafe_timer.is_canceled():
+            self.failsafe_timer.cancel() #TODO: documentation for rclpy.Time
+            self.get_logger().info("Failsafe timer cancelled.")
         try:
             self.get_logger().info("Executing moving goal...")
-            self.timer_period = 0.01
+            
             self.timer = self.create_timer(self.timer_period, self.timer_callback)
             goal_handle.succeed()    
             result = MovetoPos.Result()    
@@ -97,12 +102,14 @@ class CentralControl(Node):
             return None
         
     def intercept_execute_callback(self, goal_handle):
+        if hasattr(self, 'failsafe_timer') and self.failsafe_timer.is_canceled():
+            self.failsafe_timer.cancel()
+            self.get_logger().info("Failsafe timer cancelled.")
         try:
             self.get_logger().info("Executing intercept goal...")
             self.goal_handle = goal_handle
-            self.timer_period = 0.01
-            self.timer = self.create_timer(self.timer_period, self.timer_callback)
-            #self.start_countdown()  # Start the countdown timer
+            self.initialize_countdown()            
+            self.timer = self.create_timer(self.timer_period, self.pickup_sequence)
             goal_handle.succeed()
             result = Intercept.Result()
             return result
@@ -110,21 +117,21 @@ class CentralControl(Node):
             self.get_logger().error(f"Error during intercept execution: {e}")
             goal_handle.abort()
             self.failsafe_hold_pos()
-            return None
+            return None        
     
-    def start_countdown(self):
-        """Initialize countdown timer at 100Hz"""
+    def initialize_countdown(self):
         self.remaining_time = float(self.time_to_intercept)
         self.last_feedback_time = self.remaining_time
-        self.countdown_timer = self.create_timer(
-            0.01,  # 100Hz update rate
-            self.update_countdown
-        )
         self.get_logger().info(f"Starting countdown: {self.remaining_time} seconds")
     
-    def update_countdown(self):
-        """Update countdown at high frequency, publish feedback at 1Hz"""
-        self.remaining_time -= 0.01  # Decrement by timer period
+    def pickup_sequence(self):
+        self.remaining_time -= self.timer_period 
+        self.timer_callback()
+        corrected_pickup_z = (PICKUP_Z - self.corr_val_z) * -1.0
+        corrected_intercept_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
+        d_intercept = corrected_pickup_z - corrected_intercept_z
+        pickup_time_full = 2.0  #seconds
+        pickup_time_half = pickup_time_full / 2.0
         
         # Publish feedback and log at whole second intervals
         if int(self.last_feedback_time) > int(self.remaining_time):
@@ -133,18 +140,92 @@ class CentralControl(Node):
             self.goal_handle.publish_feedback(feedback_msg)
             self.get_logger().info(f"Time remaining: {self.remaining_time:.2f} seconds")
             self.last_feedback_time = self.remaining_time
+
+        if self.remaining_time <= pickup_time_full and self.remaining_time > pickup_time_half:
+            ramp_progress = (pickup_time_full - self.remaining_time) / pickup_time_half  # Progress over 1 second
+            self.desired_pos_z = corrected_intercept_z + (d_intercept * ramp_progress)
+            self.get_logger().info(f"Ramping Z down: {self.desired_pos_z:.3f}")
+        
+        elif self.remaining_time <= pickup_time_half and self.remaining_time > 0:
+            ramp_progress = (pickup_time_half - self.remaining_time) / pickup_time_half
+            self.desired_pos_z = corrected_pickup_z - (d_intercept * ramp_progress)
+            self.get_logger().info(f"Ramping Z up: {self.desired_pos_z:.3f}")            
         
         if self.remaining_time <= 0:
             self.get_logger().info("Countdown complete!")
-            self.countdown_timer.cancel()
-            return
+            self.drop_in_bin()
+
+    def drop_in_bin(self):
+        self.get_logger().info("Dropping object in bin...")
+        
+        if self.object_class == 0:  
+            self.get_logger().info("Moving to bin position for object type 0")
+            self.send_moving_goal(0.12, 0.13, INTERCEPT_Z)
+        
+        if self.object_class == 1:
+            self.get_logger().info("Moving to bin position for object type 1")
+            self.send_moving_goal(0.225, 0.13, INTERCEPT_Z)
+            
+        else:
+            self.get_logger().warn(f"Unknown object class: {self.object_class}")
+            self.failsafe_hold_pos()
+    """   
+    def send_moving_goal(self, x, y, z):
+        self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
+        goal_msg = MovetoPos.Goal()
+        goal_msg.position_x = x
+        goal_msg.position_y = y
+        goal_msg.position_z = z
+
+        if self.action_client.wait_for_server(5.0) == True:
+            self.action_client.send_goal(goal_msg)
+        else:
+            self.get_logger().error("Action server not available. Cannot send goal.")
+            self.failsafe_hold_pos()
+    """
+    def send_moving_goal(self, x, y, z):
+        self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
+        goal_msg = MovetoPos.Goal()
+        goal_msg.position_x = x
+        goal_msg.position_y = y
+        goal_msg.position_z = z
+    
+        if not self.action_client.wait_for_server(5.0):
+            self.get_logger().error("Action server not available. Cannot send goal.")
+            self.failsafe_hold_pos()
+            return False
+    
+        # Send goal and get future
+        goal_future = self.action_client.send_goal_async(goal_msg)
+        
+        # Wait for goal acceptance
+        try:
+            goal_handle = goal_future.result(timeout=5.0)
+            if not goal_handle.accepted:
+                self.get_logger().error('Goal rejected')
+                self.failsafe_hold_pos()
+                return False
+                
+            # Get result future
+            result_future = goal_handle.get_result_async()
+            
+            # Wait for result with timeout
+            result = result_future.result(timeout=10.0)
+            self.get_logger().info('Move completed successfully')
+            self.failsafe_hold_pos()
+            return True
+            
+        except Exception as e:
+            self.get_logger().error(f'Move failed with error: {str(e)}')
+            self.failsafe_hold_pos()
+            return False
     
     
     def position_goal_callback(self, goal_request):
         self.get_logger().info("Received goal request to move to position: " + str(goal_request))
         self.desired_pos_x = (goal_request.position_x - self.corr_val_x) * -1.0
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
-        self.desired_pos_z = (goal_request.position_z - self.corr_val_z) # * -1.0
+        self.desired_pos_z = (goal_request.position_z - self.corr_val_z)  * -1.0
         self.get_logger().info("corrected positions for robot "+  str(self.desired_pos_x)+str(self.desired_pos_y)+str(self.desired_pos_z))
         return GoalResponse.ACCEPT
     
@@ -152,8 +233,9 @@ class CentralControl(Node):
         self.get_logger().info("Received goal request to intercept object at position: " + str(goal_request))
         self.desired_pos_x = (goal_request.position_x - self.corr_val_x) * -1.0
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
-        self.desired_pos_z = 0.0  # Intercepting at ground level
+        self.desired_pos_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
         self.time_to_intercept = goal_request.time
+        self.object_class = goal_request.object_class
         self.get_logger().info("intercepting object at position: " + str(self.desired_pos_x) + ", " + str(self.desired_pos_y) + " in " + str(self.time_to_intercept) + " seconds")
         return GoalResponse.ACCEPT
     
@@ -190,7 +272,7 @@ class CentralControl(Node):
         self.desired_pos_x, self.desired_pos_y, self.desired_pos_z = self.pos_x, self.pos_y, self.pos_z
         if (self.pos_z + self.corr_val_z) > 0.05:
             self.desired_pos_z = 0.05 - self.corr_val_z
-        self.failsafe_timer = self.create_timer(0.1, self.timer_callback)        
+        self.failsafe_timer = self.create_timer(self.timer_period, self.timer_callback)        
 
     def calibration(self):
         #implement calibration for all 3 axis (x,y,z)
@@ -201,7 +283,7 @@ class CentralControl(Node):
         self.msg.accel_z = -0.002      #negative values
         #self.publish_command() 
 
-        self.calibration_wait_time = 1.0 #20.0    #set time to wait for calibration
+        self.calibration_wait_time = 2.0 #20.0    #set time to wait for calibration
         self.calibration_elapsed_time = 0.0
         self.calib_timer = 0.1
         self.calibration_timer = self.create_timer(self.calib_timer, self.calibration_callback)

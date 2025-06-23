@@ -19,7 +19,7 @@ setup(
     license='MIT',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': ['acc_control = ro45_portalrobot_controller.user_input:main',
+        'console_scripts': ['gantry_control = ro45_portalrobot_controller.central_control:main',
         ],
     },
 )
