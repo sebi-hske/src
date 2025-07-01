@@ -1,0 +1,14 @@
+# Goal
+int32 object_id  # optional, wenn du gezielt ein Objekt abfragen willst. Kann auch ignoriert werden.
+
+---
+# Result
+float32 velocity_mm_per_s
+float32 arrival_time_unix  # Zeit in Unix-Timestamp (Sekunden seit Epoch)
+float32 predicted_x_mm
+float32 predicted_y_mm
+bool valid_prediction
+
+---
+# Feedback (optional)
+string status_message

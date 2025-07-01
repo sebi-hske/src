@@ -16,14 +16,14 @@ from rclpy.action import ActionClient
 P_VALUE_X = 0.15
 D_VALUE_X = 1.8 # up from 0.7 default, possible delay in execute callback
 
-P_VALUE_Y = 0.08
-D_VALUE_Y = 1.6
+P_VALUE_Y = 0.9
+D_VALUE_Y = 2.5
 
 P_VALUE_Z = 0.4 #0.4
 D_VALUE_Z = 3.0 #1.9
 
-INTERCEPT_Z = 0.03  # Intercepting at release level
-PICKUP_Z = 0.04  # Pickup level for the object
+INTERCEPT_Z = 0.05  # Intercepting at release level
+PICKUP_Z = 0.065  # Pickup level for the object
 
 class CentralControl(Node):
     def __init__(self):
@@ -129,7 +129,7 @@ class CentralControl(Node):
         self.timer_callback()
         corrected_pickup_z = (PICKUP_Z - self.corr_val_z) * -1.0
         corrected_intercept_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
-        d_intercept = corrected_pickup_z - corrected_intercept_z
+        d_intercept = corrected_intercept_z - corrected_pickup_z
         pickup_time_full = 2.0  #seconds
         pickup_time_half = pickup_time_full / 2.0
         
@@ -141,48 +141,39 @@ class CentralControl(Node):
             self.get_logger().info(f"Time remaining: {self.remaining_time:.2f} seconds")
             self.last_feedback_time = self.remaining_time
 
-        if self.remaining_time <= pickup_time_full and self.remaining_time > pickup_time_half:
+        if self.remaining_time <= 1.0 and self.remaining_time > 0.5:
             ramp_progress = (pickup_time_full - self.remaining_time) / pickup_time_half  # Progress over 1 second
             self.desired_pos_z = corrected_intercept_z + (d_intercept * ramp_progress)
             self.get_logger().info(f"Ramping Z down: {self.desired_pos_z:.3f}")
         
-        elif self.remaining_time <= pickup_time_half and self.remaining_time > 0:
+        elif self.remaining_time <= 0.0:
             ramp_progress = (pickup_time_half - self.remaining_time) / pickup_time_half
             self.desired_pos_z = corrected_pickup_z - (d_intercept * ramp_progress)
             self.get_logger().info(f"Ramping Z up: {self.desired_pos_z:.3f}")            
         
-        if self.remaining_time <= 0:
+        if self.remaining_time <= -1.0:
             self.get_logger().info("Countdown complete!")
             self.drop_in_bin()
 
     def drop_in_bin(self):
         self.get_logger().info("Dropping object in bin...")
         
-        if self.object_class == 0:  
+        if self.object_class == 1:  
             self.get_logger().info("Moving to bin position for object type 0")
-            self.send_moving_goal(0.12, 0.13, INTERCEPT_Z)
+            self.send_moving_goal(0.12, 0.13, (INTERCEPT_Z * -1.0))
         
-        if self.object_class == 1:
+        if self.object_class == 2:
             self.get_logger().info("Moving to bin position for object type 1")
-            self.send_moving_goal(0.225, 0.13, INTERCEPT_Z)
+            self.send_moving_goal(0.225, 0.13, (INTERCEPT_Z * -1.0))
             
         else:
             self.get_logger().warn(f"Unknown object class: {self.object_class}")
             self.failsafe_hold_pos()
-    """   
-    def send_moving_goal(self, x, y, z):
-        self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
-        goal_msg = MovetoPos.Goal()
-        goal_msg.position_x = x
-        goal_msg.position_y = y
-        goal_msg.position_z = z
 
-        if self.action_client.wait_for_server(5.0) == True:
-            self.action_client.send_goal(goal_msg)
-        else:
-            self.get_logger().error("Action server not available. Cannot send goal.")
-            self.failsafe_hold_pos()
-    """
+    def goto_start_position(self):
+        self.get_logger().info("Moving to starting position")
+        self.send_moving_goal(0.0, 0.04, (INTERCEPT_Z * -1.0))
+
     def send_moving_goal(self, x, y, z):
         self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
         goal_msg = MovetoPos.Goal()
@@ -267,7 +258,10 @@ class CentralControl(Node):
 
     def failsafe_hold_pos(self):
         #hold position in case of emergency
-        self.timer.cancel()
+        try:
+            self.timer.cancel()
+        except:
+            self.get_logger().warn("No timer active")
         self.get_logger().warn("Failsafe activated. Holding position.")
         self.desired_pos_x, self.desired_pos_y, self.desired_pos_z = self.pos_x, self.pos_y, self.pos_z
         if (self.pos_z + self.corr_val_z) > 0.05:
@@ -281,9 +275,9 @@ class CentralControl(Node):
         self.msg.accel_x = 0.01     #positive values
         self.msg.accel_y = 0.002    #positive values
         self.msg.accel_z = -0.002      #negative values
-        #self.publish_command() 
+        self.publish_command() 
 
-        self.calibration_wait_time = 2.0 #20.0    #set time to wait for calibration
+        self.calibration_wait_time = 20.0    #set time to wait for calibration
         self.calibration_elapsed_time = 0.0
         self.calib_timer = 0.1
         self.calibration_timer = self.create_timer(self.calib_timer, self.calibration_callback)
@@ -295,11 +289,13 @@ class CentralControl(Node):
             self.calibration_timer.cancel()
 
             #set values to zero for non simulation runs
+            #self.revert_last_cmd()
             self.set_zero()
             
             self.set_correction_values()
             print(self.corr_val_x, self.corr_val_y, self.corr_val_z)
             self.get_logger().info("Calibration finished. Robot is in zero position.")
+            self.goto_start_position()
             #self.timer_period = 0.1
             #self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
