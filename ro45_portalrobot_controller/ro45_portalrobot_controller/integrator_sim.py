@@ -53,14 +53,15 @@ class DoubleIntegrator(Node):
 
 def main(args=None):
     rclpy.init(args=args)
+    try:
+        double_integrator = DoubleIntegrator()
 
-    double_integrator = DoubleIntegrator()
-
-    rclpy.spin(double_integrator)
-
-    double_integrator.destroy_node()
-    rclpy.shutdown()
-
+        rclpy.spin(double_integrator)
+    except KeyboardInterrupt:
+        print("\n Double Integrator Node stopped by user.")
+    finally:
+        double_integrator.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

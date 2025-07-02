@@ -12,6 +12,7 @@ import threading
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.action import ActionClient
+import math
 
 P_VALUE_X = 0.15
 D_VALUE_X = 1.8 # up from 0.7 default, possible delay in execute callback
@@ -24,6 +25,14 @@ D_VALUE_Z = 3.0 #1.9
 
 INTERCEPT_Z = 0.05  # Intercepting at release level
 PICKUP_Z = 0.07  # Pickup level for the object
+
+BIN_1_X = 0.12
+BIN_1_Y = 0.13
+
+BIN_2_X = 0.225
+BIN_2_Y = 0.13
+
+DROP_TOLERANCE = 0.005
 
 class CentralControl(Node):
     def __init__(self):
@@ -118,7 +127,9 @@ class CentralControl(Node):
         self.remaining_time -= self.timer_period
         
         if self.remaining_time <= movement_start_time and (self.remaining_time >= movement_start_time - self.timer_period):
+            self.msg.activate_gripper = True
             self.send_moving_goal(self.pickup_x, self.pickup_y ,(PICKUP_Z * -1.0))
+            self.get_logger().info("Waiting for timer to run out")
         if self.remaining_time <= 0.0:
             self.pickup_timer.cancel()
             self.get_logger().info("Pickup sequence complete!")
@@ -154,25 +165,16 @@ class CentralControl(Node):
             self.get_logger().error("Action server not available. Cannot send goal.")
             self.failsafe_hold_pos()
             return False
-    
-        # Send goal and get future
-        goal_future = self.action_client.send_goal_async(goal_msg)
+        try:       
+            goal_future = self.action_client.send_goal_async(goal_msg)
         
-        # Wait for goal acceptance
-        try:
-            goal_handle = goal_future.result(timeout=5.0)
+            """
+            goal_handle = goal_future.result()
             if not goal_handle.accepted:
                 self.get_logger().error('Goal rejected')
                 self.failsafe_hold_pos()
                 return False
-                
-            # Get result future
-            result_future = goal_handle.get_result_async()
-            
-            # Wait for result with timeout
-            result = result_future.result(timeout=10.0)
-            self.get_logger().info('Move completed successfully')
-            self.failsafe_hold_pos()
+            """
             return True
             
         except Exception as e:
@@ -279,6 +281,11 @@ class CentralControl(Node):
         self.msg.accel_x = u_x
         self.msg.accel_y = u_y
         self.msg.accel_z = u_z
+        if (math.isclose(self.pos_x, BIN_1_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.pos_y, BIN_1_Y, abs_tol=DROP_TOLERANCE)
+                or math.isclose(self.pos_x, BIN_2_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.pos_y, BIN_2_Y, abs_tol=DROP_TOLERANCE)):
+            self.msg.activate_gripper = False
+        else:
+            self.msg.activate_gripper = True    
         self.publish_command()
            
     def pos_callback(self, msg):
@@ -323,10 +330,10 @@ def main(args=None):
         mt_executor = MultiThreadedExecutor()
         rclpy.spin(central_control, executor=mt_executor)
     except KeyboardInterrupt:
-        pass
-
-    central_control.destroy_node()
-    rclpy.shutdown()
+        print("Central Control Node interrupted by user.")
+    finally:
+        central_control.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':  
     main()
