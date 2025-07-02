@@ -13,7 +13,6 @@ find_package(rosidl_default_generators REQUIRED)
 set(action_files
   "action/MovetoPos.action"
   "action/Intercept.action"
-  "action/PredictArrival.action"
 )
 
 

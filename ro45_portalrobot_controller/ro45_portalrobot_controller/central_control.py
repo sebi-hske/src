@@ -17,13 +17,13 @@ P_VALUE_X = 0.15
 D_VALUE_X = 1.8 # up from 0.7 default, possible delay in execute callback
 
 P_VALUE_Y = 0.9
-D_VALUE_Y = 2.5
+D_VALUE_Y = 2.8
 
 P_VALUE_Z = 0.4 #0.4
 D_VALUE_Z = 3.0 #1.9
 
 INTERCEPT_Z = 0.05  # Intercepting at release level
-PICKUP_Z = 0.065  # Pickup level for the object
+PICKUP_Z = 0.07  # Pickup level for the object
 
 class CentralControl(Node):
     def __init__(self):
@@ -35,15 +35,6 @@ class CentralControl(Node):
             10
         )
         
-        #only for testing
-        """
-        self.subscription_poscmd = self.create_subscription(
-            RobotPos,
-            'user_input_position',
-            self.cmd_callback,
-            10
-            )
-        """
         self.goal_handle = None
         self.position_action_server = ActionServer(
             self,
@@ -76,7 +67,6 @@ class CentralControl(Node):
 
         self.goal_lock = threading.Lock()
         self.callback_group = ReentrantCallbackGroup()
-        #initialize PD controller
         self.pd_control_x = PDRegler(P_VALUE_X, D_VALUE_X)   
         self.pd_control_y = PDRegler(P_VALUE_Y, D_VALUE_Y)
         self.pd_control_z = PDRegler(P_VALUE_Z, D_VALUE_Z)
@@ -109,7 +99,7 @@ class CentralControl(Node):
             self.get_logger().info("Executing intercept goal...")
             self.goal_handle = goal_handle
             self.initialize_countdown()            
-            self.timer = self.create_timer(self.timer_period, self.pickup_sequence)
+            self.pickup_timer = self.create_timer(self.timer_period, self.pickup_sequence)
             goal_handle.succeed()
             result = Intercept.Result()
             return result
@@ -121,49 +111,28 @@ class CentralControl(Node):
     
     def initialize_countdown(self):
         self.remaining_time = float(self.time_to_intercept)
-        self.last_feedback_time = self.remaining_time
         self.get_logger().info(f"Starting countdown: {self.remaining_time} seconds")
     
     def pickup_sequence(self):
-        self.remaining_time -= self.timer_period 
-        self.timer_callback()
-        corrected_pickup_z = (PICKUP_Z - self.corr_val_z) * -1.0
-        corrected_intercept_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
-        d_intercept = corrected_intercept_z - corrected_pickup_z
-        pickup_time_full = 2.0  #seconds
-        pickup_time_half = pickup_time_full / 2.0
+        movement_start_time = 2.0
+        self.remaining_time -= self.timer_period
         
-        # Publish feedback and log at whole second intervals
-        if int(self.last_feedback_time) > int(self.remaining_time):
-            feedback_msg = Intercept.Feedback()
-            feedback_msg.time_remaining = self.remaining_time
-            self.goal_handle.publish_feedback(feedback_msg)
-            self.get_logger().info(f"Time remaining: {self.remaining_time:.2f} seconds")
-            self.last_feedback_time = self.remaining_time
-
-        if self.remaining_time <= 1.0 and self.remaining_time > 0.5:
-            ramp_progress = (pickup_time_full - self.remaining_time) / pickup_time_half  # Progress over 1 second
-            self.desired_pos_z = corrected_intercept_z + (d_intercept * ramp_progress)
-            self.get_logger().info(f"Ramping Z down: {self.desired_pos_z:.3f}")
-        
-        elif self.remaining_time <= 0.0:
-            ramp_progress = (pickup_time_half - self.remaining_time) / pickup_time_half
-            self.desired_pos_z = corrected_pickup_z - (d_intercept * ramp_progress)
-            self.get_logger().info(f"Ramping Z up: {self.desired_pos_z:.3f}")            
-        
-        if self.remaining_time <= -1.0:
-            self.get_logger().info("Countdown complete!")
+        if self.remaining_time <= movement_start_time and (self.remaining_time >= movement_start_time - self.timer_period):
+            self.send_moving_goal(self.pickup_x, self.pickup_y ,(PICKUP_Z * -1.0))
+        if self.remaining_time <= 0.0:
+            self.pickup_timer.cancel()
+            self.get_logger().info("Pickup sequence complete!")
             self.drop_in_bin()
 
     def drop_in_bin(self):
         self.get_logger().info("Dropping object in bin...")
         
-        if self.object_class == 1:  
-            self.get_logger().info("Moving to bin position for object type 0")
+        if int(self.object_class) == 1:  
+            self.get_logger().info("Moving to bin position for object type 1")
             self.send_moving_goal(0.12, 0.13, (INTERCEPT_Z * -1.0))
         
-        if self.object_class == 2:
-            self.get_logger().info("Moving to bin position for object type 1")
+        if int(self.object_class) == 2:
+            self.get_logger().info("Moving to bin position for object type 2")
             self.send_moving_goal(0.225, 0.13, (INTERCEPT_Z * -1.0))
             
         else:
@@ -172,7 +141,7 @@ class CentralControl(Node):
 
     def goto_start_position(self):
         self.get_logger().info("Moving to starting position")
-        self.send_moving_goal(0.0, 0.04, (INTERCEPT_Z * -1.0))
+        self.send_moving_goal(0.0, 0.05, (INTERCEPT_Z * -1.0))
 
     def send_moving_goal(self, x, y, z):
         self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
@@ -218,13 +187,14 @@ class CentralControl(Node):
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
         self.desired_pos_z = (goal_request.position_z - self.corr_val_z)  * -1.0
         self.get_logger().info("corrected positions for robot "+  str(self.desired_pos_x)+str(self.desired_pos_y)+str(self.desired_pos_z))
+        self.pickup_x, self.pickup_y = goal_request.position_x, goal_request.position_y
         return GoalResponse.ACCEPT
     
     def intercept_goal_callback(self, goal_request):
         self.get_logger().info("Received goal request to intercept object at position: " + str(goal_request))
         self.desired_pos_x = (goal_request.position_x - self.corr_val_x) * -1.0
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
-        self.desired_pos_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
+        self.desired_pos_z = ((INTERCEPT_Z * -1.0) - self.corr_val_z) * -1.0
         self.time_to_intercept = goal_request.time
         self.object_class = goal_request.object_class
         self.get_logger().info("intercepting object at position: " + str(self.desired_pos_x) + ", " + str(self.desired_pos_y) + " in " + str(self.time_to_intercept) + " seconds")
@@ -264,8 +234,8 @@ class CentralControl(Node):
             self.get_logger().warn("No timer active")
         self.get_logger().warn("Failsafe activated. Holding position.")
         self.desired_pos_x, self.desired_pos_y, self.desired_pos_z = self.pos_x, self.pos_y, self.pos_z
-        if (self.pos_z + self.corr_val_z) > 0.05:
-            self.desired_pos_z = 0.05 - self.corr_val_z
+        
+        self.desired_pos_z = ((INTERCEPT_Z* -1.0) - self.corr_val_z) * -1.0
         self.failsafe_timer = self.create_timer(self.timer_period, self.timer_callback)        
 
     def calibration(self):

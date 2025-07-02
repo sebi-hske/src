@@ -5,6 +5,6 @@ zweiter bin y: 0.225, y: 0.13
 
 zum loslassen z: 0.05
 
-mitte förderband y: 0.035
+mitte förderband y: 0.05
 
 failsafe z: 0.05
