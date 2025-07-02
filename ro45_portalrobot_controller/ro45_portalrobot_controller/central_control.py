@@ -123,7 +123,7 @@ class CentralControl(Node):
         self.get_logger().info(f"Starting countdown: {self.remaining_time} seconds")
     
     def pickup_sequence(self):
-        movement_start_time = 2.0
+        movement_start_time = 1.0
         self.remaining_time -= self.timer_period
         
         if self.remaining_time <= movement_start_time and (self.remaining_time >= movement_start_time - self.timer_period):
