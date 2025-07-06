@@ -23,8 +23,8 @@ D_VALUE_Y = 2.8
 P_VALUE_Z = 0.4 #0.4
 D_VALUE_Z = 3.0 #1.9
 
-INTERCEPT_Z = 0.05  # Intercepting at release level
-PICKUP_Z = 0.07  # Pickup level for the object
+INTERCEPT_Z = -0.05  # Intercepting at release level
+PICKUP_Z = -0.07  # Pickup level for the object
 
 BIN_1_X = 0.12
 BIN_1_Y = 0.13
@@ -32,7 +32,7 @@ BIN_1_Y = 0.13
 BIN_2_X = 0.225
 BIN_2_Y = 0.13
 
-DROP_TOLERANCE = 0.005
+DROP_TOLERANCE = 0.01
 
 class CentralControl(Node):
     def __init__(self):
@@ -128,7 +128,7 @@ class CentralControl(Node):
         
         if self.remaining_time <= movement_start_time and (self.remaining_time >= movement_start_time - self.timer_period):
             self.msg.activate_gripper = True
-            self.send_moving_goal(self.pickup_x, self.pickup_y ,(PICKUP_Z * -1.0))
+            self.send_moving_goal(self.pickup_x, self.pickup_y ,PICKUP_Z)
             self.get_logger().info("Waiting for timer to run out")
         if self.remaining_time <= 0.0:
             self.pickup_timer.cancel()
@@ -140,11 +140,11 @@ class CentralControl(Node):
         
         if int(self.object_class) == 1:  
             self.get_logger().info("Moving to bin position for object type 1")
-            self.send_moving_goal(0.12, 0.13, (INTERCEPT_Z * -1.0))
+            self.send_moving_goal(0.12, 0.13, INTERCEPT_Z)
         
         if int(self.object_class) == 2:
             self.get_logger().info("Moving to bin position for object type 2")
-            self.send_moving_goal(0.225, 0.13, (INTERCEPT_Z * -1.0))
+            self.send_moving_goal(0.225, 0.13, INTERCEPT_Z)
             
         else:
             self.get_logger().warn(f"Unknown object class: {self.object_class}")
@@ -152,7 +152,7 @@ class CentralControl(Node):
 
     def goto_start_position(self):
         self.get_logger().info("Moving to starting position")
-        self.send_moving_goal(0.0, 0.05, (INTERCEPT_Z * -1.0))
+        self.send_moving_goal(0.12, 0.05, INTERCEPT_Z)
 
     def send_moving_goal(self, x, y, z):
         self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
@@ -189,16 +189,17 @@ class CentralControl(Node):
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
         self.desired_pos_z = (goal_request.position_z - self.corr_val_z)  * -1.0
         self.get_logger().info("corrected positions for robot "+  str(self.desired_pos_x)+str(self.desired_pos_y)+str(self.desired_pos_z))
-        self.pickup_x, self.pickup_y = goal_request.position_x, goal_request.position_y
+        
         return GoalResponse.ACCEPT
     
     def intercept_goal_callback(self, goal_request):
         self.get_logger().info("Received goal request to intercept object at position: " + str(goal_request))
         self.desired_pos_x = (goal_request.position_x - self.corr_val_x) * -1.0
         self.desired_pos_y = (goal_request.position_y - self.corr_val_y) * -1.0
-        self.desired_pos_z = ((INTERCEPT_Z * -1.0) - self.corr_val_z) * -1.0
+        self.desired_pos_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
         self.time_to_intercept = goal_request.time
         self.object_class = goal_request.object_class
+        self.pickup_x, self.pickup_y = goal_request.position_x, goal_request.position_y
         self.get_logger().info("intercepting object at position: " + str(self.desired_pos_x) + ", " + str(self.desired_pos_y) + " in " + str(self.time_to_intercept) + " seconds")
         return GoalResponse.ACCEPT
     
@@ -237,7 +238,7 @@ class CentralControl(Node):
         self.get_logger().warn("Failsafe activated. Holding position.")
         self.desired_pos_x, self.desired_pos_y, self.desired_pos_z = self.pos_x, self.pos_y, self.pos_z
         
-        self.desired_pos_z = ((INTERCEPT_Z* -1.0) - self.corr_val_z) * -1.0
+        self.desired_pos_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
         self.failsafe_timer = self.create_timer(self.timer_period, self.timer_callback)        
 
     def calibration(self):
@@ -284,9 +285,11 @@ class CentralControl(Node):
         if (math.isclose(self.pos_x, BIN_1_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.pos_y, BIN_1_Y, abs_tol=DROP_TOLERANCE)
                 or math.isclose(self.pos_x, BIN_2_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.pos_y, BIN_2_Y, abs_tol=DROP_TOLERANCE)):
             self.msg.activate_gripper = False
+            self.publish_command()
+            self.goto_start_position()
         else:
             self.msg.activate_gripper = True    
-        self.publish_command()
+            self.publish_command()
            
     def pos_callback(self, msg):
         self.pos_x = msg.pos_x

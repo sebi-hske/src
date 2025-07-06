@@ -2,12 +2,14 @@ import cv2
 import numpy as np
 import time
 import math
-
+import os
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from ro45_action_interfaces.action import Intercept
 from ro45_portalrobot_controller.motion_predictor import MotionPredictor
+from ClassificationController import ClassifcationController
+
 
 
     
@@ -17,7 +19,9 @@ class TrackerClient(Node):
         self.action_client = ActionClient(self, Intercept, 'intercept_object')
         self.next_id = 1
         self.tracked_objects = []
+        self.classified_objects = set()
         self.predictor = MotionPredictor()
+        self.classificator = ClassifcationController()
         self.loop()  # Start the tracker loop
 
     def send_goal(self, x, y, time):
@@ -41,7 +45,7 @@ class TrackerClient(Node):
         
 
     def find_id(self, cx, cy, current_time):
-        distance_threshold_px = 200
+        distance_threshold_px = 80
         object_timeout_s = 60.0
         min_dist = float('inf')
         best_index = None
@@ -83,35 +87,52 @@ class TrackerClient(Node):
         epsilon = 0.02 * cv2.arcLength(contour, True)
         approx = cv2.approxPolyDP(contour, epsilon, True)
         return len(approx)
+    
+    def extract_object_image(self, frame, contour, obj_id):
+        x, y, w, h = cv2.boundingRect(contour)
+        
+        padding = int(min(w, h) * 0.1)
+        x = max(0, x - padding)
+        y = max(0, y - padding)
+        w = min(frame.shape[1] - x, w + 2*padding)
+        h = min(frame.shape[0] - y, h + 2*padding)
+        
+        # Extract ROI
+        roi = frame[y:y+h, x:x+w].copy()        
+        # Draw bounding box on main frame
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        
+        return roi
+    
 
     def loop(self):
         mm_per_pixel = 0.5
         
-        min_area = 8000
-        max_area = 100000
+        min_area = 1800
+        max_area = 5000
         min_corners = 6
 
         # Cropping area
-        crop_left = 92
-        crop_right = 659
-        crop_top = 500
-        crop_bottom = 383
+        crop_left = 35
+        crop_right = 380
+        crop_top = 90
+        crop_bottom = 178
 
-        grip_x_px = 1300
+        grip_x_px = 480
         grip_x_mm = grip_x_px * mm_per_pixel
 
         # Bereich zur Geschwindigkeitsmessung (Pixelwerte im Originalbild)
-        speed_zone_left = 400
-        speed_zone_right = 700
-        speed_zone_top = 600
-        speed_zone_bottom = 700
+        speed_zone_left = 122
+        speed_zone_right = 300
+        speed_zone_top = 160
+        speed_zone_bottom = 275
         video_path = "/home/sebi/ros2_ws/RobotikProjektSoSe2025/Videos/WIN_20250522_13_44_48_Pro.mp4"
-        cap = cv2.VideoCapture(video_path)
+        cap = cv2.VideoCapture(0)
         if not cap.isOpened():
             print("⚠️ Could not load video.")
             exit()
 
-        time.sleep(2)
+        
         cv2.namedWindow("Object Detection + Prediction", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("Object Detection + Prediction", 960, 540)
 
@@ -123,14 +144,19 @@ class TrackerClient(Node):
 
             now = time.time()
             self.remove_stale_objects(now)
-
             frame_cropped = self.crop_image(frame, crop_left, crop_right, crop_top, crop_bottom)
-            hsv = cv2.cvtColor(frame_cropped, cv2.COLOR_BGR2HSV)
+            
+            
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             lower_bound = np.array([0, 0, 180])
             upper_bound = np.array([180, 60, 255])
             mask = cv2.inRange(hsv, lower_bound, upper_bound)
+            
+            
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
 
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             for contour in contours:
                 area = cv2.contourArea(contour)
@@ -143,11 +169,11 @@ class TrackerClient(Node):
                 if M["m00"] == 0:
                     continue
 
-                cx = int(M["m10"] / M["m00"]) + crop_left
-                cy = int(M["m01"] / M["m00"]) + crop_top
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"]) 
 
-                if not (300 < cx < 800 and 600 < cy < 700):
-                    continue
+                #if not (speed_zone_left < cx < speed_zone_right and speed_zone_top < cy < speed_zone_bottom):
+                #    continue
 
                 # Bereichsprüfung für Geschwindigkeitsmessung
                 in_speed_zone = (speed_zone_left <= cx <= speed_zone_right and
@@ -173,16 +199,25 @@ class TrackerClient(Node):
                         print(f"Prediction: ID {obj_id} | Velocity = {vx:.2f} mm/s | ETA = {seconds_until_grip:.1f}s")
                         self.predictor.prediction_given.add(obj_id)
                     
-                        self.send_goal(grip_x_mm, y_pred_px, seconds_until_grip)
-                        
+                        #self.send_goal(grip_x_mm, y_pred_px, seconds_until_grip)
 
+                if obj_id not in self.classified_objects:        
+                    extracted_img = self.extract_object_image(thresh, contour, obj_id)
+                    erg = self.classificator.classify_image(extracted_img, obj_id)
+                    print(erg)
+                    self.classified_objects.add(obj_id)
+                    
+                cv2.imshow(f"Object {obj_id}", extracted_img)
                 
                 cv2.circle(frame, (cx, cy), 6, (0, 0, 255), -1)
-                cv2.putText(frame, f"ID {obj_id}", (cx + 10, cy - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-
-            frame_resized = cv2.resize(frame, (0, 0), fx=0.6, fy=0.6)
-            cv2.imshow("Object Detection + Prediction", frame_resized)
+                cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
+                cv2.putText(frame, 
+                                  f'ID:{obj_id} ( {int(area)} px)', 
+                                  (cx-20, cy-10),
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        
+            
+            cv2.imshow("Object Detection + Prediction", frame)
 
             key = cv2.waitKey(30)
             if key == 27 or key == ord('q'):
