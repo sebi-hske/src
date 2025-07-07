@@ -72,12 +72,14 @@ class TrackerClient(Node):
                     cropped_image = self.call_image_controller(gray)
 
                     cv2.putText(cropped_image, 
-                                    f'Check if framing ok, press Q to continue', 
+                                    f'Check if framing ok, press Q to continue, press E to exit', 
                                     (200, 200),
                                     cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 4)
                 
                     cv2.imshow("Cropping Check", cropped_image)
                 key = cv2.waitKey(30)
+                if key == ord('e'):
+                    exit()
                 if key == 27 or key == ord('q'):
                     break
             
