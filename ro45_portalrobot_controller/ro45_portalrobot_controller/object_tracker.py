@@ -1,4 +1,5 @@
 import cv2
+import cv2.aruco as aruco
 import numpy as np
 import time
 import math
@@ -9,20 +10,79 @@ from rclpy.node import Node
 from ro45_action_interfaces.action import Intercept
 from ro45_portalrobot_controller.motion_predictor import MotionPredictor
 from ClassificationController import ClassifcationController
+from ImageController import ImageController
 
 
 
     
 class TrackerClient(Node):
     def __init__(self):
-        super().__init__('action_client')
+        super().__init__('tracking_client')
         self.action_client = ActionClient(self, Intercept, 'intercept_object')
         self.next_id = 1
         self.tracked_objects = []
         self.classified_objects = set()
         self.predictor = MotionPredictor()
         self.classificator = ClassifcationController()
+        self.video_path = "/home/sebi/ros2_ws/RobotikProjektSoSe2025/Videos/video_marker_erkennbar.mp4"
+        #self.video_path = 2
+        self.size_img_to_markers()
         self.loop()  # Start the tracker loop
+
+    def size_img_to_markers(self):
+        cap = cv2.VideoCapture(self.video_path)
+        if not cap.isOpened():
+            print("⚠️ Could not load video.")
+            exit()
+        cv2.namedWindow("Cropping Check", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Cropping Check", 960, 540)
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_50)
+        parameters = aruco.DetectorParameters()
+        detector = aruco.ArucoDetector(aruco_dict, parameters)
+        while True:
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                print("⚠️ Failed to grab frame")
+                continue
+
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            corners, ids, _ = detector.detectMarkers(gray)
+            if ids is None:
+                self.get_logger().error("No Markers detected")
+                cv2.imshow("Cropping Check", gray)
+            else:
+                marker_corner_indices = {
+                    0: 3, 1: 2, 2: 1, 3: 0
+                }
+
+                detected_points = {}
+                for i, marker_id in enumerate(ids.flatten()):
+                    if marker_id in marker_corner_indices:
+                        corner_index = marker_corner_indices[marker_id]
+                        selected_corner = corners[i][0][corner_index]
+                        detected_points[marker_id] = selected_corner.copy()
+                        
+                ordered_ids = [3, 2, 1, 0]
+                if not all(mid in detected_points for mid in ordered_ids):
+                    self.get_logger().warn("Specified Markers not found")
+                else:
+                    self.src_pts = np.array([detected_points[i] for i in ordered_ids], dtype="float32")
+                    
+
+                    cropped_image = self.call_image_controller(gray)
+
+                    cv2.putText(cropped_image, 
+                                    f'Check if framing ok, press Q to continue', 
+                                    (200, 200),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 4)
+                
+                    cv2.imshow("Cropping Check", cropped_image)
+                key = cv2.waitKey(30)
+                if key == 27 or key == ord('q'):
+                    break
+            
+        cap.release()
+        cv2.destroyAllWindows()
 
     def send_goal(self, x, y, time):
         self.get_logger().info(f"Sending goal")
@@ -61,7 +121,7 @@ class TrackerClient(Node):
             obj.update({'x': cx, 'y': cy, 'time': current_time})
             return obj['id']
         new_id = self.next_id
-        print(f"New ID {new_id} created at x={cx}, y={cy}")
+        print(f"New ID {new_id} created at x={cx * self.px_to_gantry_factor }, y={cy * self.px_to_gantry_factor}")
         self.next_id += 1
         self.tracked_objects.append({'id': new_id, 'x': cx, 'y': cy, 'time': current_time})
         return new_id
@@ -82,6 +142,7 @@ class TrackerClient(Node):
         start_y = crop_top
         end_y = height - crop_bottom
         return image[start_y:end_y, start_x:end_x]
+    
 
     def count_corners(self, contour):
         epsilon = 0.02 * cv2.arcLength(contour, True)
@@ -97,44 +158,44 @@ class TrackerClient(Node):
         w = min(frame.shape[1] - x, w + 2*padding)
         h = min(frame.shape[0] - y, h + 2*padding)
         
-        # Extract ROI
         roi = frame[y:y+h, x:x+w].copy()        
-        # Draw bounding box on main frame
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
         
         return roi
     
+    def call_image_controller(self, gray):
+        cropped, x_min, y_min = ImageController.crop_bounding_rect(gray, self.src_pts)
+        warped = ImageController.rectify_cropped_image(cropped, self.src_pts, x_min, y_min)
+        mirrored = cv2.flip(warped, 0)
+            
+        return ImageController.crop(mirrored, 0, 0, 100, 80)
+    
 
     def loop(self):
-        mm_per_pixel = 0.5
+        mm_per_pixel = 0.333
+        self.px_to_gantry_factor = 0.0003
         
-        min_area = 1800
-        max_area = 5000
+        min_area = 10000#1800
+        max_area = 20000#5000
         min_corners = 6
 
-        # Cropping area
-        crop_left = 35
-        crop_right = 380
-        crop_top = 90
-        crop_bottom = 178
-
-        grip_x_px = 480
+        grip_x_px = 2000
         grip_x_mm = grip_x_px * mm_per_pixel
 
         # Bereich zur Geschwindigkeitsmessung (Pixelwerte im Originalbild)
-        speed_zone_left = 122
-        speed_zone_right = 300
-        speed_zone_top = 160
-        speed_zone_bottom = 275
-        video_path = "/home/sebi/ros2_ws/RobotikProjektSoSe2025/Videos/WIN_20250522_13_44_48_Pro.mp4"
-        cap = cv2.VideoCapture(0)
+        speed_zone_left = 200
+        speed_zone_right = 400
+        speed_zone_top = 0
+        speed_zone_bottom = 250
+        
+        cap = cv2.VideoCapture(self.video_path)
         if not cap.isOpened():
             print("⚠️ Could not load video.")
             exit()
 
         
         cv2.namedWindow("Object Detection + Prediction", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Object Detection + Prediction", 960, 540)
+        cv2.resizeWindow("Object Detection + Prediction", 1510, 820)
 
         while True:
             ret, frame = cap.read()
@@ -144,17 +205,12 @@ class TrackerClient(Node):
 
             now = time.time()
             self.remove_stale_objects(now)
-            frame_cropped = self.crop_image(frame, crop_left, crop_right, crop_top, crop_bottom)
-            
-            
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            lower_bound = np.array([0, 0, 180])
-            upper_bound = np.array([180, 60, 255])
-            mask = cv2.inRange(hsv, lower_bound, upper_bound)
-            
-            
+
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            _, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
+            
+            frame_cropped = self.call_image_controller(gray)       
+            
+            _, thresh = cv2.threshold(frame_cropped, 180, 255, cv2.THRESH_BINARY)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -190,11 +246,11 @@ class TrackerClient(Node):
 
                     if vx is not None and arrival_time is not None:
                         seconds_until_grip = arrival_time - now
-                        x_pred_px = grip_x_px
+                        x_pred_px = grip_x_px 
                         y_pred_px = cy
 
-                        cv2.circle(frame, (x_pred_px, y_pred_px), 8, (255, 0, 0), 2)
-                        cv2.putText(frame, f"Grab in {seconds_until_grip:.1f}s", (x_pred_px + 10, y_pred_px),
+                        cv2.circle(frame_cropped, (x_pred_px, y_pred_px), 8, (255, 0, 0), 2)
+                        cv2.putText(frame_cropped, f"Grab in {seconds_until_grip:.1f}s", (x_pred_px + 10, y_pred_px),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                         print(f"Prediction: ID {obj_id} | Velocity = {vx:.2f} mm/s | ETA = {seconds_until_grip:.1f}s")
                         self.predictor.prediction_given.add(obj_id)
@@ -204,20 +260,26 @@ class TrackerClient(Node):
                 if obj_id not in self.classified_objects:        
                     extracted_img = self.extract_object_image(thresh, contour, obj_id)
                     erg = self.classificator.classify_image(extracted_img, obj_id)
-                    print(erg)
+                    if erg[0] == 1:
+                        enum = "unicorn"
+                    elif erg[0] == 2:
+                        enum = "cat"
+                    elif erg[0] == 0:
+                        enum = "other"
+                    print("ID: ",obj_id," Class: ",enum)
                     self.classified_objects.add(obj_id)
-                    
-                cv2.imshow(f"Object {obj_id}", extracted_img)
+
+                #cv2.imshow(f"Object {obj_id}", extracted_img)
                 
-                cv2.circle(frame, (cx, cy), 6, (0, 0, 255), -1)
-                cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
-                cv2.putText(frame, 
+                cv2.circle(frame_cropped, (cx, cy), 6, (0, 0, 255), -1)
+                cv2.drawContours(frame_cropped, [contour], -1, (0, 255, 0), 2)
+                cv2.putText(frame_cropped, 
                                   f'ID:{obj_id} ( {int(area)} px)', 
                                   (cx-20, cy-10),
-                                  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 240, 240), 2)
         
             
-            cv2.imshow("Object Detection + Prediction", frame)
+            cv2.imshow("Object Detection + Prediction", frame_cropped)
 
             key = cv2.waitKey(30)
             if key == 27 or key == ord('q'):

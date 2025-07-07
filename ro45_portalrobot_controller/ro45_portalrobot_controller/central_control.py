@@ -13,6 +13,8 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.action import ActionClient
 import math
+import subprocess
+from pathlib import Path
 
 P_VALUE_X = 0.15
 D_VALUE_X = 1.8 # up from 0.7 default, possible delay in execute callback
@@ -37,6 +39,7 @@ DROP_TOLERANCE = 0.01
 class CentralControl(Node):
     def __init__(self):
         super().__init__('central_control')
+
         self.subscription_pos = self.create_subscription(
             RobotPos,
             'robot_position',
@@ -82,6 +85,7 @@ class CentralControl(Node):
         
         self.timer_period = 0.01  
         self.calibration()
+    
 
     def position_execute_callback(self, goal_handle):
         if hasattr(self, 'failsafe_timer') and self.failsafe_timer.is_canceled():
