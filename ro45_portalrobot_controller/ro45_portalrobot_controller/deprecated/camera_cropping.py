@@ -7,7 +7,7 @@ from cv_bridge import CvBridge
 import cv2
 import cv2.aruco as aruco
 import numpy as np
-from ImageController import ImageController
+from ro45_portalrobot_controller.ro45_portalrobot_controller.ImageController import ImageController
 
 class CameraNode(Node):
     def __init__(self):

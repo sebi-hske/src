@@ -29,17 +29,22 @@ class DoubleIntegrator(Node):
         self.pos_y = 0.0
         self.pos_z = 0.0
 
+        # Add damping factors
+        self.accel_scale = 0.2    # Reduces acceleration input
+
     def accel_callback(self, msg:RobotCmd):
-        self.accel_x = msg.accel_x
-        self.accel_y = msg.accel_y
-        self.accel_z = msg.accel_z
+        # Scale incoming acceleration
+        self.accel_x = msg.accel_x * self.accel_scale
+        self.accel_y = msg.accel_y * self.accel_scale
+        self.accel_z = msg.accel_z * self.accel_scale
 
     def timer_callback(self):
-        self.vel_x += self.accel_x * self.timer_period
-        self.vel_y += self.accel_y * self.timer_period
-        self.vel_z += self.accel_z * self.timer_period
+        # Update velocities with damping
+        self.vel_x = (self.vel_x + self.accel_x * self.timer_period) 
+        self.vel_y = (self.vel_y + self.accel_y * self.timer_period)
+        self.vel_z = (self.vel_z + self.accel_z * self.timer_period) 
 
-
+        # Position updates remain the same
         self.pos_x += self.vel_x * self.timer_period
         self.pos_y += self.vel_y * self.timer_period
         self.pos_z += self.vel_z * self.timer_period

@@ -25,8 +25,11 @@ D_VALUE_Y = 2.8
 P_VALUE_Z = 0.4 #0.4
 D_VALUE_Z = 3.0 #1.9
 
-INTERCEPT_Z = -0.05  # Intercepting at release level
-PICKUP_Z = -0.07  # Pickup level for the object
+STARTING_Z = -0.05
+INTERCEPT_Z = -0.07 
+PICKUP_Z = -0.075
+AFTER_PICKUP = -0.06  
+DROPOFF_Z = -0.05
 
 BIN_1_X = 0.12
 BIN_1_Y = 0.13
@@ -76,6 +79,9 @@ class CentralControl(Node):
         self.msg.accel_y = 0.0      
         self.msg.accel_z = 0.0
         self.msg.activate_gripper = False
+        self.corr_val_x = 0.0
+        self.corr_val_y = 0.0
+        self.corr_val_z = 0.0
 
         self.goal_lock = threading.Lock()
         self.callback_group = ReentrantCallbackGroup()
@@ -83,7 +89,8 @@ class CentralControl(Node):
         self.pd_control_y = PDRegler(P_VALUE_Y, D_VALUE_Y)
         self.pd_control_z = PDRegler(P_VALUE_Z, D_VALUE_Z)
         
-        self.timer_period = 0.01  
+        self.timer_period = 0.1  
+        self.calibration_status = False
         self.calibration()
     
 
@@ -111,7 +118,9 @@ class CentralControl(Node):
         try:
             self.get_logger().info("Executing intercept goal...")
             self.goal_handle = goal_handle
-            self.initialize_countdown()            
+            self.send_moving_goal(self.pickup_x, self.pickup_y, INTERCEPT_Z)            
+            self.initialize_countdown()
+            self.not_picked = False
             self.pickup_timer = self.create_timer(self.timer_period, self.pickup_sequence)
             goal_handle.succeed()
             result = Intercept.Result()
@@ -127,16 +136,19 @@ class CentralControl(Node):
         self.get_logger().info(f"Starting countdown: {self.remaining_time} seconds")
     
     def pickup_sequence(self):
-        movement_start_time = 1.0
+        movement_start_time = 3.0
         self.remaining_time -= self.timer_period
-        
-        if self.remaining_time <= movement_start_time and (self.remaining_time >= movement_start_time - self.timer_period):
+        if (self.remaining_time <= movement_start_time) and (self.remaining_time >= movement_start_time - self.timer_period):
             self.msg.activate_gripper = True
-            self.send_moving_goal(self.pickup_x, self.pickup_y ,PICKUP_Z)
-            self.get_logger().info("Waiting for timer to run out")
-        if self.remaining_time <= 0.0:
-            self.pickup_timer.cancel()
+            self.send_moving_goal(self.pickup_x, self.pickup_y , PICKUP_Z)
+            self.get_logger().info("Waiting for timer to run out")            
+        if (self.remaining_time <= movement_start_time) and (self.corrected_output_z <= PICKUP_Z) and self.not_picked:
             self.get_logger().info("Pickup sequence complete!")
+            self.not_picked = False
+            self.send_moving_goal(self.pickup_x, self.pickup_y ,DROPOFF_Z)
+        if (self.remaining_time <= 0.0) and (self.corrected_output_z >= AFTER_PICKUP):
+            self.get_logger().info("Moving to drop-off position after pickup")
+            self.pickup_timer.cancel()
             self.drop_in_bin()
 
     def drop_in_bin(self):
@@ -144,19 +156,19 @@ class CentralControl(Node):
         
         if int(self.object_class) == 1:  
             self.get_logger().info("Moving to bin position for object type 1")
-            self.send_moving_goal(0.12, 0.13, INTERCEPT_Z)
+            self.send_moving_goal(BIN_1_X, BIN_1_Y, DROPOFF_Z)
         
-        if int(self.object_class) == 2:
+        elif int(self.object_class) == 2:
             self.get_logger().info("Moving to bin position for object type 2")
-            self.send_moving_goal(0.225, 0.13, INTERCEPT_Z)
+            self.send_moving_goal(BIN_2_X, BIN_2_Y, DROPOFF_Z)
             
-        else:
+        elif int(self.object_class) == 0:
             self.get_logger().warn(f"Unknown object class: {self.object_class}")
             self.failsafe_hold_pos()
 
     def goto_start_position(self):
         self.get_logger().info("Moving to starting position")
-        self.send_moving_goal(0.12, 0.05, INTERCEPT_Z)
+        self.send_moving_goal(0.21, 0.05, STARTING_Z)
 
     def send_moving_goal(self, x, y, z):
         self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
@@ -242,7 +254,7 @@ class CentralControl(Node):
         self.get_logger().warn("Failsafe activated. Holding position.")
         self.desired_pos_x, self.desired_pos_y, self.desired_pos_z = self.pos_x, self.pos_y, self.pos_z
         
-        self.desired_pos_z = (INTERCEPT_Z - self.corr_val_z) * -1.0
+        self.desired_pos_z = (STARTING_Z - self.corr_val_z) * -1.0
         self.failsafe_timer = self.create_timer(self.timer_period, self.timer_callback)        
 
     def calibration(self):
@@ -269,6 +281,7 @@ class CentralControl(Node):
             #self.revert_last_cmd()
             self.set_zero()
             
+            
             self.set_correction_values()
             print(self.corr_val_x, self.corr_val_y, self.corr_val_z)
             self.get_logger().info("Calibration finished. Robot is in zero position.")
@@ -286,19 +299,22 @@ class CentralControl(Node):
         self.msg.accel_x = u_x
         self.msg.accel_y = u_y
         self.msg.accel_z = u_z
-        if (math.isclose(self.pos_x, BIN_1_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.pos_y, BIN_1_Y, abs_tol=DROP_TOLERANCE)
-                or math.isclose(self.pos_x, BIN_2_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.pos_y, BIN_2_Y, abs_tol=DROP_TOLERANCE)):
+        if (math.isclose(self.corrected_output_x, BIN_1_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.corrected_output_y, BIN_1_Y, abs_tol=DROP_TOLERANCE)
+                or math.isclose(self.corrected_output_x, BIN_2_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.corrected_output_y, BIN_2_Y, abs_tol=DROP_TOLERANCE)):
             self.msg.activate_gripper = False
-            self.publish_command()
-            self.goto_start_position()
+            self.publish_command()            
         else:
-            self.msg.activate_gripper = True    
-            self.publish_command()
+            self.msg.activate_gripper = True
+            self.publish_command()    
            
     def pos_callback(self, msg):
         self.pos_x = msg.pos_x
         self.pos_y = msg.pos_y
         self.pos_z = msg.pos_z
+        
+        self.corrected_output_x = (msg.pos_x - self.corr_val_x) * -1.0
+        self.corrected_output_y = (msg.pos_y - self.corr_val_y) * -1.0
+        self.corrected_output_z = (msg.pos_z - self.corr_val_z) * -1.0
 
     #only for testing
     """

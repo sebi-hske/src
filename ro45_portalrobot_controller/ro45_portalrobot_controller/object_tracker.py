@@ -9,8 +9,8 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from ro45_action_interfaces.action import Intercept
 from ro45_portalrobot_controller.motion_predictor import MotionPredictor
-from ClassificationController import ClassifcationController
-from ImageController import ImageController
+from ro45_portalrobot_controller.ClassificationController import ClassifcationController
+from ro45_portalrobot_controller.ImageController import ImageController
 
 
 
@@ -24,8 +24,8 @@ class TrackerClient(Node):
         self.classified_objects = set()
         self.predictor = MotionPredictor()
         self.classificator = ClassifcationController()
-        self.video_path = "/home/sebi/ros2_ws/RobotikProjektSoSe2025/Videos/video_marker_erkennbar.mp4"
-        #self.video_path = 2
+        #self.video_path = "/home/sebi/ros2_ws/RobotikProjektSoSe2025/Videos/video_marker_erkennbar.mp4"
+        self.video_path = 2
         self.size_img_to_markers()
         self.loop()  # Start the tracker loop
 
@@ -73,8 +73,8 @@ class TrackerClient(Node):
 
                     cv2.putText(cropped_image, 
                                     f'Check if framing ok, press Q to continue, press E to exit', 
-                                    (200, 200),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 4)
+                                    (20, 80),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
                 
                     cv2.imshow("Cropping Check", cropped_image)
                 key = cv2.waitKey(30)
@@ -170,25 +170,31 @@ class TrackerClient(Node):
         warped = ImageController.rectify_cropped_image(cropped, self.src_pts, x_min, y_min)
         mirrored = cv2.flip(warped, 0)
             
-        return ImageController.crop(mirrored, 0, 0, 100, 80)
+        return ImageController.crop(mirrored, 0, 0, 45, 35)
     
 
     def loop(self):
-        mm_per_pixel = 0.333
-        self.px_to_gantry_factor = 0.0003
+        mm_per_pixel = 0.714
+        self.px_to_gantry_factor = 0.000714
         
-        min_area = 10000#1800
-        max_area = 20000#5000
+        min_area = 2800
+        max_area = 3800
         min_corners = 6
 
-        grip_x_px = 2000
-        grip_x_mm = grip_x_px * mm_per_pixel
+        grip_x_px = 728 
+        """28 px pro 20mm auf bild (kästchen schachbrett)
+        von anfang WKS zum idealen greifpunkt ca 48cm
+        das entspricht einem pixelwert von 728 angenommen mm und px skalieren linear 
+        da entzerren nötig ist vermutlich nicht
+        410px entsprechen dem Nullpunkt der X-Achse im WKS
+        weitere anpassungen im Betrieb nötig"""
+        grip_x_mm = 0.21
 
         # Bereich zur Geschwindigkeitsmessung (Pixelwerte im Originalbild)
-        speed_zone_left = 200
-        speed_zone_right = 400
+        speed_zone_left = 70
+        speed_zone_right = 160
         speed_zone_top = 0
-        speed_zone_bottom = 250
+        speed_zone_bottom = 140
         
         cap = cv2.VideoCapture(self.video_path)
         if not cap.isOpened():
@@ -212,7 +218,7 @@ class TrackerClient(Node):
             
             frame_cropped = self.call_image_controller(gray)       
             
-            _, thresh = cv2.threshold(frame_cropped, 180, 255, cv2.THRESH_BINARY)
+            _, thresh = cv2.threshold(frame_cropped, 100, 255, cv2.THRESH_BINARY)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -273,7 +279,7 @@ class TrackerClient(Node):
 
                 #cv2.imshow(f"Object {obj_id}", extracted_img)
                 
-                cv2.circle(frame_cropped, (cx, cy), 6, (0, 0, 255), -1)
+                cv2.circle(frame_cropped, (cx, cy), 4, (0, 0, 255), -1)
                 cv2.drawContours(frame_cropped, [contour], -1, (0, 255, 0), 2)
                 cv2.putText(frame_cropped, 
                                   f'ID:{obj_id} ( {int(area)} px)', 
