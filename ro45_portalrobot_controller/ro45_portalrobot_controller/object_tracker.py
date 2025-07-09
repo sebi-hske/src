@@ -70,7 +70,7 @@ class TrackerClient(Node):
                     
 
                     cropped_image = self.call_image_controller(gray)
-
+                    
                     cv2.putText(cropped_image, 
                                     f'Check if framing ok, press Q to continue, press E to exit', 
                                     (20, 80),
@@ -86,13 +86,13 @@ class TrackerClient(Node):
         cap.release()
         cv2.destroyAllWindows()
 
-    def send_goal(self, x, y, time):
+    def send_goal(self, x, y, time, obj_class):
         self.get_logger().info(f"Sending goal")
         goal_msg = Intercept.Goal()
         goal_msg.position_x = float(x)
         goal_msg.position_y = float(y)
         goal_msg.time = time
-        goal_msg.object_class = 1
+        goal_msg.object_class = obj_class
     
         if not self.action_client.wait_for_server(5.0):
             self.get_logger().error("Action server not available. Cannot send goal.")
@@ -170,7 +170,7 @@ class TrackerClient(Node):
         warped = ImageController.rectify_cropped_image(cropped, self.src_pts, x_min, y_min)
         mirrored = cv2.flip(warped, 0)
             
-        return ImageController.crop(mirrored, 0, 0, 45, 35)
+        return ImageController.crop(mirrored, 10, 0, 45, 35)
     
 
     def loop(self):
@@ -180,21 +180,21 @@ class TrackerClient(Node):
         min_area = 2800
         max_area = 3800
         min_corners = 6
-
-        grip_x_px = 728 
+        seconds_until_grip = 0.0
+        grip_x_px = 690 
         """28 px pro 20mm auf bild (kästchen schachbrett)
         von anfang WKS zum idealen greifpunkt ca 48cm
         das entspricht einem pixelwert von 728 angenommen mm und px skalieren linear 
         da entzerren nötig ist vermutlich nicht
         410px entsprechen dem Nullpunkt der X-Achse im WKS
         weitere anpassungen im Betrieb nötig"""
-        grip_x_mm = 0.21
+        grip_x_mm = grip_x_px * mm_per_pixel
 
         # Bereich zur Geschwindigkeitsmessung (Pixelwerte im Originalbild)
-        speed_zone_left = 70
-        speed_zone_right = 160
+        speed_zone_left = 60
+        speed_zone_right = 170
         speed_zone_top = 0
-        speed_zone_bottom = 140
+        speed_zone_bottom = 160
         
         cap = cv2.VideoCapture(self.video_path)
         if not cap.isOpened():
@@ -218,7 +218,7 @@ class TrackerClient(Node):
             
             frame_cropped = self.call_image_controller(gray)       
             
-            _, thresh = cv2.threshold(frame_cropped, 100, 255, cv2.THRESH_BINARY)
+            _, thresh = cv2.threshold(frame_cropped, 140, 255, cv2.THRESH_BINARY)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -260,10 +260,10 @@ class TrackerClient(Node):
                         cv2.circle(frame_cropped, (x_pred_px, y_pred_px), 8, (255, 0, 0), 2)
                         cv2.putText(frame_cropped, f"Grab in {seconds_until_grip:.1f}s", (x_pred_px + 10, y_pred_px),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-                        print(f"Prediction: ID {obj_id} | Velocity = {vx:.2f} mm/s | ETA = {seconds_until_grip:.1f}s")
+                        print(f"Prediction: ID {obj_id} | Velocity = {vx:.2f} mm/s | ETA = {seconds_until_grip:.2f}s")
                         self.predictor.prediction_given.add(obj_id)
+                        self.send_goal(0.19, 0.055, seconds_until_grip, erg[0])
                     
-                        #self.send_goal(grip_x_mm, y_pred_px, seconds_until_grip)
 
                 if obj_id not in self.classified_objects:        
                     extracted_img = self.extract_object_image(thresh, contour, obj_id)
@@ -276,6 +276,7 @@ class TrackerClient(Node):
                         enum = "other"
                     print("ID: ",obj_id," Class: ",enum)
                     self.classified_objects.add(obj_id)
+                    #self.send_goal(0.19, y_pred_px * self.px_to_gantry_factor, seconds_until_grip)
 
                 #cv2.imshow(f"Object {obj_id}", extracted_img)
                 

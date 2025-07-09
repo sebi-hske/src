@@ -15,27 +15,27 @@ from rclpy.action import ActionClient
 import math
 import subprocess
 from pathlib import Path
+import time
 
-P_VALUE_X = 0.15
-D_VALUE_X = 1.8 # up from 0.7 default, possible delay in execute callback
+P_VALUE_X = 0.7
+D_VALUE_X = 3.0 # up from 0.7 default, possible delay in execute callback
 
 P_VALUE_Y = 0.9
-D_VALUE_Y = 2.8
+D_VALUE_Y = 7.0
 
-P_VALUE_Z = 0.4 #0.4
+P_VALUE_Z = 0.8 #0.4
 D_VALUE_Z = 3.0 #1.9
 
 STARTING_Z = -0.05
-INTERCEPT_Z = -0.07 
-PICKUP_Z = -0.075
+INTERCEPT_Z = -0.06 
+PICKUP_Z = -0.08
 AFTER_PICKUP = -0.06  
 DROPOFF_Z = -0.05
 
-BIN_1_X = 0.12
-BIN_1_Y = 0.13
+BIN_1_X = 0.145
+BIN_Y = 0.12
 
-BIN_2_X = 0.225
-BIN_2_Y = 0.13
+BIN_2_X = 0.215
 
 DROP_TOLERANCE = 0.01
 
@@ -67,7 +67,7 @@ class CentralControl(Node):
             'intercept_object',
             execute_callback=self.intercept_execute_callback,
             goal_callback=self.intercept_goal_callback,
-            handle_accepted_callback=self.handle_accepted_callback,
+            handle_accepted_callback=self.handle_accepted_callback_intercept,
             cancel_callback=self.cancel_callback
         )
 
@@ -88,20 +88,25 @@ class CentralControl(Node):
         self.pd_control_x = PDRegler(P_VALUE_X, D_VALUE_X)   
         self.pd_control_y = PDRegler(P_VALUE_Y, D_VALUE_Y)
         self.pd_control_z = PDRegler(P_VALUE_Z, D_VALUE_Z)
-        
-        self.timer_period = 0.1  
-        self.calibration_status = False
+        self.no_of_timers = 0
+        self.timer_period = 0.1
+        time.sleep(2)  
         self.calibration()
     
 
     def position_execute_callback(self, goal_handle):
-        if hasattr(self, 'failsafe_timer') and self.failsafe_timer.is_canceled():
-            self.failsafe_timer.cancel() #TODO: documentation for rclpy.Time
+        if hasattr(self, 'failsafe_timer'):
+            self.failsafe_timer.destroy() #TODO: documentation for rclpy.Time
+            self.no_of_timers -= 1
             self.get_logger().info("Failsafe timer cancelled.")
         try:
             self.get_logger().info("Executing moving goal...")
-            
+            if hasattr(self, 'timer'):
+                self.get_logger().info("had to destroy movement timer")
+                self.timer.destroy()
+                self.no_of_timers -= 1
             self.timer = self.create_timer(self.timer_period, self.timer_callback)
+            self.no_of_timers += 1
             goal_handle.succeed()    
             result = MovetoPos.Result()    
             return result
@@ -112,16 +117,22 @@ class CentralControl(Node):
             return None
         
     def intercept_execute_callback(self, goal_handle):
-        if hasattr(self, 'failsafe_timer') and self.failsafe_timer.is_canceled():
-            self.failsafe_timer.cancel()
+        if hasattr(self, 'failsafe_timer'):
+            self.failsafe_timer.destroy()
+            self.no_of_timers -= 1
             self.get_logger().info("Failsafe timer cancelled.")
+        if hasattr(self, 'timer'):
+            self.get_logger().info("had to destroy movement timer")
+            self.timer.destroy()
+            self.no_of_timers -= 1
         try:
             self.get_logger().info("Executing intercept goal...")
             self.goal_handle = goal_handle
             self.send_moving_goal(self.pickup_x, self.pickup_y, INTERCEPT_Z)            
             self.initialize_countdown()
-            self.not_picked = False
+            self.not_picked = True
             self.pickup_timer = self.create_timer(self.timer_period, self.pickup_sequence)
+            self.no_of_timers += 1
             goal_handle.succeed()
             result = Intercept.Result()
             return result
@@ -136,19 +147,20 @@ class CentralControl(Node):
         self.get_logger().info(f"Starting countdown: {self.remaining_time} seconds")
     
     def pickup_sequence(self):
-        movement_start_time = 3.0
+        movement_start_time = 2.0
         self.remaining_time -= self.timer_period
         if (self.remaining_time <= movement_start_time) and (self.remaining_time >= movement_start_time - self.timer_period):
             self.msg.activate_gripper = True
             self.send_moving_goal(self.pickup_x, self.pickup_y , PICKUP_Z)
             self.get_logger().info("Waiting for timer to run out")            
-        if (self.remaining_time <= movement_start_time) and (self.corrected_output_z <= PICKUP_Z) and self.not_picked:
+        if (self.remaining_time <= movement_start_time) and (self.corrected_output_z <= (PICKUP_Z + 0.002)) and self.not_picked:
             self.get_logger().info("Pickup sequence complete!")
             self.not_picked = False
             self.send_moving_goal(self.pickup_x, self.pickup_y ,DROPOFF_Z)
         if (self.remaining_time <= 0.0) and (self.corrected_output_z >= AFTER_PICKUP):
             self.get_logger().info("Moving to drop-off position after pickup")
-            self.pickup_timer.cancel()
+            self.pickup_timer.destroy()
+            self.no_of_timers -= 1
             self.drop_in_bin()
 
     def drop_in_bin(self):
@@ -156,11 +168,11 @@ class CentralControl(Node):
         
         if int(self.object_class) == 1:  
             self.get_logger().info("Moving to bin position for object type 1")
-            self.send_moving_goal(BIN_1_X, BIN_1_Y, DROPOFF_Z)
+            self.send_moving_goal(BIN_1_X, BIN_Y, DROPOFF_Z)
         
         elif int(self.object_class) == 2:
             self.get_logger().info("Moving to bin position for object type 2")
-            self.send_moving_goal(BIN_2_X, BIN_2_Y, DROPOFF_Z)
+            self.send_moving_goal(BIN_2_X, BIN_Y, DROPOFF_Z)
             
         elif int(self.object_class) == 0:
             self.get_logger().warn(f"Unknown object class: {self.object_class}")
@@ -168,7 +180,7 @@ class CentralControl(Node):
 
     def goto_start_position(self):
         self.get_logger().info("Moving to starting position")
-        self.send_moving_goal(0.21, 0.05, STARTING_Z)
+        self.send_moving_goal(0.19, 0.055, STARTING_Z)
 
     def send_moving_goal(self, x, y, z):
         self.get_logger().info(f"Sending moving goal to position: x={x}, y={y}, z={z}")
@@ -223,7 +235,15 @@ class CentralControl(Node):
         with self.goal_lock:
             if self.goal_handle is not None and self.goal_handle.is_active:
                 self.get_logger().info('Replacing active goal with new goal.')
-                self.goal_handle.abort()
+                #self.goal_handle.abort()
+            self.goal_handle = goal_handle
+        goal_handle.execute()
+
+    def handle_accepted_callback_intercept(self, goal_handle):
+        with self.goal_lock:
+            if self.goal_handle is not None and self.goal_handle.is_active:
+                self.get_logger().info('Adding Object to target list.')
+                self.goal_handle.abort()            
             self.goal_handle = goal_handle
         goal_handle.execute()
 
@@ -248,38 +268,42 @@ class CentralControl(Node):
     def failsafe_hold_pos(self):
         #hold position in case of emergency
         try:
-            self.timer.cancel()
+            self.timer.destroy()
+            self.no_of_timers -= 1
         except:
             self.get_logger().warn("No timer active")
         self.get_logger().warn("Failsafe activated. Holding position.")
         self.desired_pos_x, self.desired_pos_y, self.desired_pos_z = self.pos_x, self.pos_y, self.pos_z
         
         self.desired_pos_z = (STARTING_Z - self.corr_val_z) * -1.0
-        self.failsafe_timer = self.create_timer(self.timer_period, self.timer_callback)        
+        self.failsafe_timer = self.create_timer(self.timer_period, self.timer_callback)
+        self.no_of_timers += 1        
 
     def calibration(self):
         #implement calibration for all 3 axis (x,y,z)
         #step all axis to zero position
         #set all position values to zero
-        self.msg.accel_x = 0.01     #positive values
-        self.msg.accel_y = 0.002    #positive values
-        self.msg.accel_z = -0.002      #negative values
-        self.publish_command() 
+        self.msg.accel_x = 0.3     #positive values
+        self.msg.accel_y = 0.2    #positive values
+        self.msg.accel_z = -0.16      #negative values
+        self.publish_command()
+        time.sleep(0.1) 
+        self.set_zero()
 
         self.calibration_wait_time = 20.0    #set time to wait for calibration
         self.calibration_elapsed_time = 0.0
         self.calib_timer = 0.1
         self.calibration_timer = self.create_timer(self.calib_timer, self.calibration_callback)
+        self.no_of_timers += 1
 
     def calibration_callback(self):
         self.calibration_elapsed_time += self.calib_timer
         self.get_logger().info("Waiting for calibration to finish...")
         if self.calibration_elapsed_time >= self.calibration_wait_time:
-            self.calibration_timer.cancel()
-
+            self.calibration_timer.destroy()
+            self.no_of_timers -= 1
             #set values to zero for non simulation runs
             #self.revert_last_cmd()
-            self.set_zero()
             
             
             self.set_correction_values()
@@ -295,12 +319,13 @@ class CentralControl(Node):
         self.corr_val_z = self.pos_z
 
     def timer_callback(self):
+        print(self.no_of_timers)
         u_x, u_y, u_z = self.call_pd_controller()
         self.msg.accel_x = u_x
         self.msg.accel_y = u_y
         self.msg.accel_z = u_z
-        if (math.isclose(self.corrected_output_x, BIN_1_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.corrected_output_y, BIN_1_Y, abs_tol=DROP_TOLERANCE)
-                or math.isclose(self.corrected_output_x, BIN_2_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.corrected_output_y, BIN_2_Y, abs_tol=DROP_TOLERANCE)):
+        if (math.isclose(self.corrected_output_x, BIN_1_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.corrected_output_y, BIN_Y, abs_tol=DROP_TOLERANCE)
+                or math.isclose(self.corrected_output_x, BIN_2_X, abs_tol=DROP_TOLERANCE) and math.isclose(self.corrected_output_y, BIN_Y, abs_tol=DROP_TOLERANCE)):
             self.msg.activate_gripper = False
             self.publish_command()            
         else:
