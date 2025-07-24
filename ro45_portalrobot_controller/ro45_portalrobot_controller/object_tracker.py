@@ -290,7 +290,8 @@ class TrackerClient(Node):
                     print("ID: ",obj_id," Class: ",enum)
                     self.classified_objects.add(obj_id)
                     #self.send_goal(0.19, y_pred_px * self.px_to_gantry_factor, seconds_until_grip)
-
+                    
+                """folgende Zeile für Testen entkommentieren"""
                 #cv2.imshow(f"Object {obj_id}", extracted_img)
                 
                 cv2.circle(frame_cropped, (cx, cy), 4, (0, 0, 255), -1)
