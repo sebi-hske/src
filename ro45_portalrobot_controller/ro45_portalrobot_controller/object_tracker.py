@@ -123,7 +123,7 @@ class TrackerClient(Node):
             obj.update({'x': cx, 'y': cy, 'time': current_time})
             return obj['id']
         new_id = self.next_id
-        print(f"New ID {new_id} created at x={cx * self.px_to_gantry_factor }, y={cy * self.px_to_gantry_factor}")
+        print(f"New ID {new_id} created at x={cx}, y={cy}")
         self.next_id += 1
         self.tracked_objects.append({'id': new_id, 'x': cx, 'y': cy, 'time': current_time})
         return new_id
@@ -175,13 +175,19 @@ class TrackerClient(Node):
 
     def loop(self):
         mm_per_pixel = 0.714
-        self.px_to_gantry_factor = 0.000714
+        self.px_to_gantry_factor = 0.0007
         
         min_area = 2800
         max_area = 3800
         min_corners = 6
         seconds_until_grip = 0.0
-        grip_x_px = 690 
+        grip_x_px = 700 
+        grip_x_pos = 0.19
+        grip_y_pos = 0.06
+        middle_px = 90
+        max_y = 0.085
+        min_y = 0.04
+        
         """28 px pro 20mm auf bild (kästchen schachbrett)
         von anfang WKS zum idealen greifpunkt ca 48cm
         das entspricht einem pixelwert von 728 angenommen mm und px skalieren linear 
@@ -218,7 +224,7 @@ class TrackerClient(Node):
             
             frame_cropped = self.call_image_controller(gray)       
             
-            _, thresh = cv2.threshold(frame_cropped, 140, 255, cv2.THRESH_BINARY)
+            _, thresh = cv2.threshold(frame_cropped, 120, 255, cv2.THRESH_BINARY)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -262,7 +268,15 @@ class TrackerClient(Node):
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                         print(f"Prediction: ID {obj_id} | Velocity = {vx:.2f} mm/s | ETA = {seconds_until_grip:.2f}s")
                         self.predictor.prediction_given.add(obj_id)
-                        self.send_goal(0.19, 0.055, seconds_until_grip, erg[0])
+                        y_factor = (cy - middle_px) * self.px_to_gantry_factor
+                        grip_y_pos += y_factor
+                        print(grip_y_pos)
+
+                        if grip_y_pos >= max_y:
+                            grip_y_pos = max_y
+                        elif grip_y_pos <= min_y:
+                            grip_y_pos = min_y
+                        self.send_goal(grip_x_pos, grip_y_pos, seconds_until_grip, erg[0])
                     
 
                 if obj_id not in self.classified_objects:        
