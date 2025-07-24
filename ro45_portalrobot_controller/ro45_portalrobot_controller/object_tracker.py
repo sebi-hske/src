@@ -196,7 +196,6 @@ class TrackerClient(Node):
         weitere anpassungen im Betrieb nötig"""
         grip_x_mm = grip_x_px * mm_per_pixel
 
-        # Bereich zur Geschwindigkeitsmessung (Pixelwerte im Originalbild)
         speed_zone_left = 60
         speed_zone_right = 170
         speed_zone_top = 0
